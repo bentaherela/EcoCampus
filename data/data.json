@@ -1,1 +1,46 @@
-
+{
+  "resume": {
+    "nb_mesures": 20,
+    "nb_alertes": 6,
+    "nb_groupes": 15
+  },
+  "mesures": [
+    {"id": 1, "batiment": "Cours", "ressource": "electricite", "valeur": 1250.00, "date_heure": "2026-10-07 08:15", "seuil": 2000.00, "alerte": false},
+    {"id": 2, "batiment": "Laboratoires", "ressource": "electricite", "valeur": 2580.00, "date_heure": "2026-10-07 14:30", "seuil": 2000.00, "alerte": true},
+    {"id": 3, "batiment": "Bibliotheque", "ressource": "eau", "valeur": 320.00, "date_heure": "2026-10-07 10:20", "seuil": 500.00, "alerte": false},
+    {"id": 4, "batiment": "Residence", "ressource": "eau", "valeur": 540.00, "date_heure": "2026-10-07 07:00", "seuil": 500.00, "alerte": true},
+    {"id": 5, "batiment": "Administration", "ressource": "electricite", "valeur": 980.00, "date_heure": "2026-10-07 09:00", "seuil": 1500.00, "alerte": false},
+    {"id": 6, "batiment": "Cours", "ressource": "eau", "valeur": 210.00, "date_heure": "2026-10-07 11:00", "seuil": 500.00, "alerte": false},
+    {"id": 7, "batiment": "Laboratoires", "ressource": "chauffage", "valeur": 1620.00, "date_heure": "2026-10-07 08:00", "seuil": 1500.00, "alerte": true},
+    {"id": 8, "batiment": "Bibliotheque", "ressource": "electricite", "valeur": 1780.00, "date_heure": "2026-10-07 15:00", "seuil": 2000.00, "alerte": false},
+    {"id": 9, "batiment": "Residence", "ressource": "electricite", "valeur": 2210.00, "date_heure": "2026-10-07 20:00", "seuil": 2000.00, "alerte": true},
+    {"id": 10, "batiment": "Administration", "ressource": "chauffage", "valeur": 890.00, "date_heure": "2026-10-07 08:30", "seuil": 1500.00, "alerte": false},
+    {"id": 11, "batiment": "Cours", "ressource": "chauffage", "valeur": 1100.00, "date_heure": "2026-10-07 08:00", "seuil": 1500.00, "alerte": false},
+    {"id": 12, "batiment": "Laboratoires", "ressource": "eau", "valeur": 610.00, "date_heure": "2026-10-08 10:00", "seuil": 500.00, "alerte": true},
+    {"id": 13, "batiment": "Bibliotheque", "ressource": "chauffage", "valeur": 760.00, "date_heure": "2026-10-08 08:00", "seuil": 1500.00, "alerte": false},
+    {"id": 14, "batiment": "Residence", "ressource": "chauffage", "valeur": 1430.00, "date_heure": "2026-10-08 07:30", "seuil": 1500.00, "alerte": false},
+    {"id": 15, "batiment": "Administration", "ressource": "eau", "valeur": 180.00, "date_heure": "2026-10-08 09:15", "seuil": 500.00, "alerte": false},
+    {"id": 16, "batiment": "Cours", "ressource": "electricite", "valeur": 1890.00, "date_heure": "2026-10-08 14:00", "seuil": 2000.00, "alerte": false},
+    {"id": 17, "batiment": "Laboratoires", "ressource": "electricite", "valeur": 2340.00, "date_heure": "2026-10-08 16:45", "seuil": 2000.00, "alerte": true},
+    {"id": 18, "batiment": "Bibliotheque", "ressource": "eau", "valeur": 455.00, "date_heure": "2026-10-08 12:10", "seuil": 500.00, "alerte": false},
+    {"id": 19, "batiment": "Residence", "ressource": "eau", "valeur": 495.00, "date_heure": "2026-10-08 19:00", "seuil": 500.00, "alerte": false},
+    {"id": 20, "batiment": "Administration", "ressource": "electricite", "valeur": 1320.00, "date_heure": "2026-10-08 13:20", "seuil": 1500.00, "alerte": false}
+  ],
+  "statistiques": [
+    {"batiment": "Cours", "ressource": "electricite", "nb_mesures": 2, "total": 3140.00, "moyenne": 1570.00, "min": 1250.00, "max": 1890.00, "nb_alertes": 0},
+    {"batiment": "Laboratoires", "ressource": "electricite", "nb_mesures": 2, "total": 4920.00, "moyenne": 2460.00, "min": 2340.00, "max": 2580.00, "nb_alertes": 2},
+    {"batiment": "Bibliotheque", "ressource": "eau", "nb_mesures": 2, "total": 775.00, "moyenne": 387.50, "min": 320.00, "max": 455.00, "nb_alertes": 0},
+    {"batiment": "Residence", "ressource": "eau", "nb_mesures": 2, "total": 1035.00, "moyenne": 517.50, "min": 495.00, "max": 540.00, "nb_alertes": 1},
+    {"batiment": "Administration", "ressource": "electricite", "nb_mesures": 2, "total": 2300.00, "moyenne": 1150.00, "min": 980.00, "max": 1320.00, "nb_alertes": 0},
+    {"batiment": "Cours", "ressource": "eau", "nb_mesures": 1, "total": 210.00, "moyenne": 210.00, "min": 210.00, "max": 210.00, "nb_alertes": 0},
+    {"batiment": "Laboratoires", "ressource": "chauffage", "nb_mesures": 1, "total": 1620.00, "moyenne": 1620.00, "min": 1620.00, "max": 1620.00, "nb_alertes": 1},
+    {"batiment": "Bibliotheque", "ressource": "electricite", "nb_mesures": 1, "total": 1780.00, "moyenne": 1780.00, "min": 1780.00, "max": 1780.00, "nb_alertes": 0},
+    {"batiment": "Residence", "ressource": "electricite", "nb_mesures": 1, "total": 2210.00, "moyenne": 2210.00, "min": 2210.00, "max": 2210.00, "nb_alertes": 1},
+    {"batiment": "Administration", "ressource": "chauffage", "nb_mesures": 1, "total": 890.00, "moyenne": 890.00, "min": 890.00, "max": 890.00, "nb_alertes": 0},
+    {"batiment": "Cours", "ressource": "chauffage", "nb_mesures": 1, "total": 1100.00, "moyenne": 1100.00, "min": 1100.00, "max": 1100.00, "nb_alertes": 0},
+    {"batiment": "Laboratoires", "ressource": "eau", "nb_mesures": 1, "total": 610.00, "moyenne": 610.00, "min": 610.00, "max": 610.00, "nb_alertes": 1},
+    {"batiment": "Bibliotheque", "ressource": "chauffage", "nb_mesures": 1, "total": 760.00, "moyenne": 760.00, "min": 760.00, "max": 760.00, "nb_alertes": 0},
+    {"batiment": "Residence", "ressource": "chauffage", "nb_mesures": 1, "total": 1430.00, "moyenne": 1430.00, "min": 1430.00, "max": 1430.00, "nb_alertes": 0},
+    {"batiment": "Administration", "ressource": "eau", "nb_mesures": 1, "total": 180.00, "moyenne": 180.00, "min": 180.00, "max": 180.00, "nb_alertes": 0}
+  ]
+}
