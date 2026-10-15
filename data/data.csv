@@ -1,0 +1,4 @@
+id,batiment,ressource,valeur,date_heure,seuil
+1,Cours,electricite,1250,2026-10-07 08:15,2000
+2,Laboratoires,electricite,2580,2026-10-07 14:30,2000
+3,Bibliotheque,eau,320,2026-10-07 10:20,500
