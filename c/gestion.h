@@ -23,5 +23,15 @@ int ajouterMesure(Mesure mesures[],
                   int *nombre,
                   int capacite,
                   Mesure nouvelleMesure);
+/* Recherche : affiche les mesures correspondantes, retourne leur nombre */
+int rechercherParBatiment(const Mesure mesures[], int nombre, const char *batiment);
+int rechercherParRessource(const Mesure mesures[], int nombre, const char *ressource);
+
+/* Suppression par id : retourne 1 si supprimee, 0 si id introuvable */
+int supprimerMesure(Mesure mesures[], int *nombre, int id);
+
+/* Tri : croissant = 1 (ordre croissant) ou 0 (decroissant) */
+void trierParValeur(Mesure mesures[], int nombre, int croissant);
+void trierParDate(Mesure mesures[], int nombre, int croissant);                  
 
 #endif
