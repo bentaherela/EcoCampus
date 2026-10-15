@@ -84,6 +84,9 @@ int main(void)
         printf("5. Supprimer une mesure (par ID)\n");
         printf("6. Trier par valeur\n");
         printf("7. Trier par date\n");
+        printf("8. Statistiques par batiment\n");
+        printf("9. Afficher les anomalies\n");
+        printf("10. Exporter vers data/data.json\n");
         printf("0. Quitter\n");
         printf("Choix : ");
 
@@ -181,6 +184,33 @@ int main(void)
                 afficherMesures(mesures, nombre);
                 break;
             }
+
+            case 8: {
+                StatsBatiment stats[MAX_STATS];
+                int nbStats = calculerStatistiques(mesures, nombre, stats, MAX_STATS);
+                if (nbStats == 0) {
+                    printf("Aucune mesure.\n");
+                } else {
+                    afficherStatistiques(stats, nbStats);
+                }
+                break;
+            }
+
+            case 9: {
+                int nb = afficherAnomalies(mesures, nombre);
+                if (nb == 0) {
+                    printf("Aucune anomalie detectee.\n");
+                } else {
+                    printf("%d anomalie(s) detectee(s).\n", nb);
+                }
+                break;
+            }
+
+            case 10:
+                if (exporterJSON("data/data.json", mesures, nombre)) {
+                    printf("Export reussi : data/data.json\n");
+                }
+                break;
 
             case 0:
                 printf("Au revoir.\n");
