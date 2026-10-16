@@ -22,6 +22,13 @@ int ajouterMesure(Mesure mesures[],
                   int *nombre,
                   int capacite,
                   Mesure nouvelleMesure);
+
+/* Sauvegarde : reecrit toutes les mesures dans le fichier CSV.
+   Retourne 1 si OK, 0 si erreur. */
+int sauvegarderMesures(const char *nomFichier,
+                       const Mesure mesures[],
+                       int nombre);
+
 /* Recherche : affiche les mesures correspondantes, retourne leur nombre */
 int rechercherParBatiment(const Mesure mesures[], int nombre, const char *batiment);
 int rechercherParRessource(const Mesure mesures[], int nombre, const char *ressource);
