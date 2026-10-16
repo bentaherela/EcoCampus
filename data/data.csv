@@ -19,4 +19,6 @@ id,batiment,ressource,valeur,date_heure,seuil
 18,Bibliotheque,eau,455.00,2026-10-08 12:10,500.00
 19,Residence,eau,495.00,2026-10-08 19:00,500.00
 20,Administration,electricite,1320.00,2026-10-08 13:20,1500.00
-21,cours,eau,500.00,2026-10-16 10:38,500.00
+22,Cours,electricite,2300.00,2026-10-09 14:00,2000.00
+21,Cours,electricite,2100.00,2026-10-09 08:00,2000.00
+23,Cours,electricite,500.00,2026-10-09 09:00,2000.00

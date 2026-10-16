@@ -23,12 +23,22 @@ static void enMinuscules(const char *src, char *dst, size_t taille)
     dst[i] = '\0';
 }
 
+/* Supprime les espaces en fin de chaine (ex : "cours " devient "cours") */
+static void supprimerEspacesFin(char *s)
+{
+    size_t n = strlen(s);
+    while (n > 0 && isspace((unsigned char)s[n - 1])) {
+        s[--n] = '\0';
+    }
+}
+
 /* Retourne 1 si 'texte' contient 'motif', sans tenir compte de la casse */
 static int contientTexte(const char *texte, const char *motif)
 {
     char t[64], m[64];
     enMinuscules(texte, t, sizeof t);
     enMinuscules(motif, m, sizeof m);
+    supprimerEspacesFin(m);
     return strstr(t, m) != NULL;
 }
 int rechercherParBatiment(const Mesure mesures[], int nombre, const char *batiment)
@@ -189,6 +199,125 @@ void afficherStatistiques(const StatsBatiment stats[], int nbStats)
                stats[k].total, stats[k].moyenne, stats[k].min, stats[k].max,
                stats[k].nb_alertes);
     }
+}
+
+/* ====================================================================
+   Tendance (moyenne mobile)
+   ==================================================================== */
+ 
+/* Moyenne des n valeurs se terminant a l'indice i
+   (valeurs[i-n+1] ... valeurs[i]).
+   A appeler seulement si i >= n - 1, sinon il n'y a pas assez de valeurs. */
+float moyenneMobile(const float valeurs[], int i, int n)
+{
+    float somme = 0.0f;
+    for (int k = i - n + 1; k <= i; k++) {
+        somme += valeurs[k];
+    }
+    return somme / (float)n;
+}
+ 
+/* Retourne 1 si a et b sont egales, sans tenir compte de la casse */
+static int egalSansCasse(const char *a, const char *b)
+{
+    char x[64], y[64];
+    enMinuscules(a, x, sizeof x);
+    enMinuscules(b, y, sizeof y);
+    supprimerEspacesFin(x);
+    supprimerEspacesFin(y);
+    return strcmp(x, y) == 0;
+}
+ 
+/* Affiche la moyenne mobile d'un couple (batiment, ressource) puis conclut
+   sur la tendance. On ne melange pas les ressources (kWh et m3).
+   Retourne le nombre de mesures du couple. */
+int afficherTendance(const Mesure mesures[], int nombre,
+                     const char *batiment, const char *ressource, int fenetre)
+{
+    int idx[MAX_MESURES];        /* indices des mesures du couple dans mesures[] */
+    float valeurs[MAX_MESURES];  /* leurs valeurs, classees par date */
+    int nb = 0;
+ 
+    if (fenetre < 1) {
+        return 0;
+    }
+ 
+    /* 1. selectionner les mesures du couple demande */
+    for (int i = 0; i < nombre; i++) {
+        if (egalSansCasse(mesures[i].batiment, batiment) &&
+            egalSansCasse(mesures[i].ressource, ressource)) {
+            idx[nb++] = i;
+        }
+    }
+ 
+    if (nb == 0) {
+        printf("Aucune mesure pour ce batiment et cette ressource.\n");
+        return 0;
+    }
+    if (nb < fenetre) {
+        printf("Pas assez de mesures (%d) pour une moyenne mobile sur %d valeurs.\n",
+               nb, fenetre);
+        return nb;
+    }
+
+    /* 2. trier les INDICES par date (tri a bulles) :
+       le tableau d'origine n'est pas modifie */
+    for (int i = 0; i < nb - 1; i++) {
+        for (int j = 0; j < nb - 1 - i; j++) {
+            if (strcmp(mesures[idx[j]].date_heure,
+                       mesures[idx[j + 1]].date_heure) > 0) {
+                int tmp = idx[j];
+                idx[j] = idx[j + 1];
+                idx[j + 1] = tmp;
+            }
+        }
+    }
+
+    /* 3. recopier les valeurs dans l'ordre chronologique */
+    for (int i = 0; i < nb; i++) {
+        valeurs[i] = mesures[idx[i]].valeur;
+    }
+
+    /* 4. afficher les valeurs et leur moyenne mobile */
+    printf("\nTendance : %s - %s (moyenne mobile sur %d valeurs)\n",
+           batiment, ressource, fenetre);
+    printf("%-18s %10s %12s\n", "Date/heure", "Valeur", "Moy. mobile");
+
+    float premiere = 0.0f, derniere = 0.0f;
+    for (int i = 0; i < nb; i++) {
+        if (i >= fenetre - 1) {
+            float mm = moyenneMobile(valeurs, i, fenetre);
+            if (i == fenetre - 1) premiere = mm;   /* 1ere moyenne calculable */
+            derniere = mm;                          /* derniere moyenne */
+            printf("%-18s %10.2f %12.2f\n",
+                   mesures[idx[i]].date_heure, valeurs[i], mm);
+        } else {
+            /* pas encore assez de valeurs pour une moyenne */
+            printf("%-18s %10.2f %12s\n",
+                   mesures[idx[i]].date_heure, valeurs[i], "-");
+        }
+    }
+
+    /* 5. conclusion : on compare la premiere et la derniere moyenne mobile.
+       Variation de moins de 5 % = stable. */
+    if (nb == fenetre) {
+        /* une seule moyenne mobile : il n'y a rien a comparer */
+        printf("Tendance : impossible a determiner (il faut au moins %d mesures).\n",
+               fenetre + 1);
+        return nb;
+    }
+
+    float diff = derniere - premiere;
+    float marge = 0.05f * (premiere < 0 ? -premiere : premiere);
+
+    if (diff > marge) {
+        printf("Tendance : HAUSSE (%.2f -> %.2f)\n", premiere, derniere);
+    } else if (diff < -marge) {
+        printf("Tendance : BAISSE (%.2f -> %.2f)\n", premiere, derniere);
+    } else {
+        printf("Tendance : STABLE (%.2f -> %.2f)\n", premiere, derniere);
+    }
+    return nb;
 }
 
 /* ====================================================================
