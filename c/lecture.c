@@ -49,6 +49,28 @@ int chargerMesures(const char *nomFichier,
     return nombre;
 }
 
+int sauvegarderMesures(const char *nomFichier, const Mesure mesures[], int nombre)
+{
+    FILE *f = fopen(nomFichier, "w");
+    if (f == NULL) {
+        printf("Erreur : impossible d'ecrire dans %s.\n", nomFichier);
+        return 0;
+    }
+
+    /* ligne d'en-tete, ignoree par chargerMesures */
+    fprintf(f, "id,batiment,ressource,valeur,date_heure,seuil\n");
+
+    for (int i = 0; i < nombre; i++) {
+        fprintf(f, "%d,%s,%s,%.2f,%s,%.2f\n",
+                mesures[i].id, mesures[i].batiment, mesures[i].ressource,
+                mesures[i].valeur, mesures[i].date_heure, mesures[i].seuil);
+    }
+
+    int ok = !ferror(f);
+    if (fclose(f) != 0) ok = 0;
+    return ok;
+}
+
 void afficherMesures(const Mesure mesures[], int nombre)
 {
     for (int i = 0; i < nombre; i++) {

@@ -84,7 +84,7 @@ int main(void)
         printf("5. Supprimer une mesure (par ID)\n");
         printf("6. Trier par valeur\n");
         printf("7. Trier par date\n");
-        printf("8. Statistiques par batiment\n");
+        printf("8. Statistiques par batiment et ressource\n");
         printf("9. Afficher les anomalies\n");
         printf("10. Exporter vers data/data.json\n");
         printf("0. Quitter\n");
@@ -108,6 +108,12 @@ int main(void)
                 if (saisirMesure(&m)) {
                     if (ajouterMesure(mesures, &nombre, MAX_MESURES, m)) {
                         printf("\nMesure ajoutee. Total : %d\n", nombre);
+                        /* sauvegarde immediate dans le CSV : l'ajout
+                           survivra a la fermeture du programme */
+                        if (sauvegarderMesures("data/data.csv", mesures, nombre)) {
+                        printf("Sauvegarde reussie.\n");
+                        }
+                        
                     } else {
                         printf("\nErreur : tableau plein.\n");
                     }

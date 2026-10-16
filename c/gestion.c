@@ -3,11 +3,7 @@
 #include <string.h>
 #include <ctype.h>
  
-int ajouterMesure(Mesure mesures[],
-                  int *nombre,
-                  int capacite,
-                  Mesure nouvelleMesure)
-{
+int ajouterMesure(Mesure mesures[],int *nombre,int capacite,Mesure nouvelleMesure){
     if (*nombre >= capacite) {
         return 0; /* tableau plein */
     }
