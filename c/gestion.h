@@ -65,6 +65,18 @@ int calculerStatistiques(const Mesure mesures[], int nombre,
                          StatsBatiment stats[], int capacite);
 void afficherStatistiques(const StatsBatiment stats[], int nbStats);
 
+/* Moyenne des n valeurs se terminant a l'indice i */
+float moyenneMobile(const float valeurs[], int i, int n);
+
+/* Nombre de valeurs utilisees pour la moyenne mobile */
+#define FENETRE_MOBILE 2
+ 
+/* Affiche la moyenne mobile et la tendance (hausse / baisse / stable)
+   d'un couple (batiment, ressource), mesures classees par date.
+   Retourne le nombre de mesures du couple (0 si aucune). */
+int afficherTendance(const Mesure mesures[], int nombre,
+                     const char *batiment, const char *ressource, int fenetre);
+
 /* Affiche les mesures en anomalie, retourne leur nombre */
 int afficherAnomalies(const Mesure mesures[], int nombre);
 

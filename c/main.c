@@ -87,6 +87,7 @@ int main(void)
         printf("8. Statistiques par batiment et ressource\n");
         printf("9. Afficher les anomalies\n");
         printf("10. Exporter vers data/data.json\n");
+        printf("11. Tendance (moyenne mobile)\n");
         printf("0. Quitter\n");
         printf("Choix : ");
 
@@ -111,7 +112,7 @@ int main(void)
                         /* sauvegarde immediate dans le CSV : l'ajout
                            survivra a la fermeture du programme */
                         if (sauvegarderMesures("data/data.csv", mesures, nombre)) {
-                        printf("Sauvegarde reussie.\n");
+                            printf("Sauvegarde reussie.\n");
                         }
                         
                     } else {
@@ -159,6 +160,11 @@ int main(void)
                 }
                 if (supprimerMesure(mesures, &nombre, id)) {
                     printf("Mesure supprimee. Total : %d\n", nombre);
+                    /* sauvegarde immediate dans le CSV : la suppression10
+                           survivra a la fermeture du programme */
+                    if (sauvegarderMesures("data/data.csv", mesures, nombre)) {
+                        printf("Sauvegarde reussie.\n");
+                    }
                 } else {
                     printf("ID introuvable.\n");
                 }
@@ -217,6 +223,25 @@ int main(void)
                     printf("Export reussi : data/data.json\n");
                 }
                 break;
+
+            case 11: {
+                char bat[50];
+                char res[20];
+                printf("Batiment : ");
+                if (scanf(" %49[^\n]", bat) != 1) {
+                    printf("Saisie invalide.\n");
+                    viderBuffer();
+                    break;
+                }
+                printf("Ressource : ");
+                if (scanf(" %19[^\n]", res) != 1) {
+                    printf("Saisie invalide.\n");
+                    viderBuffer();
+                    break;
+                }
+                afficherTendance(mesures, nombre, bat, res, FENETRE_MOBILE);
+                break;
+            }
 
             case 0:
                 printf("Au revoir.\n");
