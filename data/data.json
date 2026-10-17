@@ -1,8 +1,8 @@
 {
   "resume": {
-    "nb_mesures": 22,
+    "nb_mesures": 24,
     "nb_alertes": 8,
-    "nb_groupes": 17
+    "nb_groupes": 15
   },
   "mesures": [
     {"id": 1, "batiment": "Cours", "ressource": "electricite", "valeur": 1250.00, "date_heure": "2026-10-07 08:15", "seuil": 2000.00, "alerte": false},
@@ -25,11 +25,13 @@
     {"id": 18, "batiment": "Bibliotheque", "ressource": "eau", "valeur": 455.00, "date_heure": "2026-10-08 12:10", "seuil": 500.00, "alerte": false},
     {"id": 19, "batiment": "Residence", "ressource": "eau", "valeur": 495.00, "date_heure": "2026-10-08 19:00", "seuil": 500.00, "alerte": false},
     {"id": 20, "batiment": "Administration", "ressource": "electricite", "valeur": 1320.00, "date_heure": "2026-10-08 13:20", "seuil": 1500.00, "alerte": false},
-    {"id": 22, "batiment": "cours", "ressource": "electricite", "valeur": 2300.00, "date_heure": "2026-10-09 14:00", "seuil": 2000.00, "alerte": true},
-    {"id": 21, "batiment": "cours ", "ressource": "electricite", "valeur": 2100.00, "date_heure": "2026-10-09 08:00", "seuil": 2000.00, "alerte": true}
+    {"id": 22, "batiment": "Cours", "ressource": "electricite", "valeur": 2300.00, "date_heure": "2026-10-09 14:00", "seuil": 2000.00, "alerte": true},
+    {"id": 21, "batiment": "Cours", "ressource": "electricite", "valeur": 2100.00, "date_heure": "2026-10-09 08:00", "seuil": 2000.00, "alerte": true},
+    {"id": 23, "batiment": "Cours", "ressource": "electricite", "valeur": 2000.00, "date_heure": "2026-10-09 06:00", "seuil": 2000.00, "alerte": false},
+    {"id": 24, "batiment": "Cours", "ressource": "electricite", "valeur": 2000.00, "date_heure": "2026-10-09 05:00", "seuil": 2000.00, "alerte": false}
   ],
   "statistiques": [
-    {"batiment": "Cours", "ressource": "electricite", "nb_mesures": 2, "total": 3140.00, "moyenne": 1570.00, "min": 1250.00, "max": 1890.00, "nb_alertes": 0},
+    {"batiment": "Cours", "ressource": "electricite", "nb_mesures": 6, "total": 11540.00, "moyenne": 1923.33, "min": 1250.00, "max": 2300.00, "nb_alertes": 2},
     {"batiment": "Laboratoires", "ressource": "electricite", "nb_mesures": 2, "total": 4920.00, "moyenne": 2460.00, "min": 2340.00, "max": 2580.00, "nb_alertes": 2},
     {"batiment": "Bibliotheque", "ressource": "eau", "nb_mesures": 2, "total": 775.00, "moyenne": 387.50, "min": 320.00, "max": 455.00, "nb_alertes": 0},
     {"batiment": "Residence", "ressource": "eau", "nb_mesures": 2, "total": 1035.00, "moyenne": 517.50, "min": 495.00, "max": 540.00, "nb_alertes": 1},
@@ -43,8 +45,23 @@
     {"batiment": "Laboratoires", "ressource": "eau", "nb_mesures": 1, "total": 610.00, "moyenne": 610.00, "min": 610.00, "max": 610.00, "nb_alertes": 1},
     {"batiment": "Bibliotheque", "ressource": "chauffage", "nb_mesures": 1, "total": 760.00, "moyenne": 760.00, "min": 760.00, "max": 760.00, "nb_alertes": 0},
     {"batiment": "Residence", "ressource": "chauffage", "nb_mesures": 1, "total": 1430.00, "moyenne": 1430.00, "min": 1430.00, "max": 1430.00, "nb_alertes": 0},
-    {"batiment": "Administration", "ressource": "eau", "nb_mesures": 1, "total": 180.00, "moyenne": 180.00, "min": 180.00, "max": 180.00, "nb_alertes": 0},
-    {"batiment": "cours", "ressource": "electricite", "nb_mesures": 1, "total": 2300.00, "moyenne": 2300.00, "min": 2300.00, "max": 2300.00, "nb_alertes": 1},
-    {"batiment": "cours ", "ressource": "electricite", "nb_mesures": 1, "total": 2100.00, "moyenne": 2100.00, "min": 2100.00, "max": 2100.00, "nb_alertes": 1}
+    {"batiment": "Administration", "ressource": "eau", "nb_mesures": 1, "total": 180.00, "moyenne": 180.00, "min": 180.00, "max": 180.00, "nb_alertes": 0}
+  ],
+  "tendances": [
+    {"batiment": "Cours", "ressource": "electricite", "fenetre": 2, "nb_mesures": 6, "tendance": "hausse", "premiere_moyenne": 1570.00, "derniere_moyenne": 2200.00, "points": [{"date_heure": "2026-10-07 08:15", "valeur": 1250.00, "moyenne_mobile": null}, {"date_heure": "2026-10-08 14:00", "valeur": 1890.00, "moyenne_mobile": 1570.00}, {"date_heure": "2026-10-09 05:00", "valeur": 2000.00, "moyenne_mobile": 1945.00}, {"date_heure": "2026-10-09 06:00", "valeur": 2000.00, "moyenne_mobile": 2000.00}, {"date_heure": "2026-10-09 08:00", "valeur": 2100.00, "moyenne_mobile": 2050.00}, {"date_heure": "2026-10-09 14:00", "valeur": 2300.00, "moyenne_mobile": 2200.00}]},
+    {"batiment": "Laboratoires", "ressource": "electricite", "fenetre": 2, "nb_mesures": 2, "tendance": "indeterminee", "premiere_moyenne": null, "derniere_moyenne": null, "points": [{"date_heure": "2026-10-07 14:30", "valeur": 2580.00, "moyenne_mobile": null}, {"date_heure": "2026-10-08 16:45", "valeur": 2340.00, "moyenne_mobile": 2460.00}]},
+    {"batiment": "Bibliotheque", "ressource": "eau", "fenetre": 2, "nb_mesures": 2, "tendance": "indeterminee", "premiere_moyenne": null, "derniere_moyenne": null, "points": [{"date_heure": "2026-10-07 10:20", "valeur": 320.00, "moyenne_mobile": null}, {"date_heure": "2026-10-08 12:10", "valeur": 455.00, "moyenne_mobile": 387.50}]},
+    {"batiment": "Residence", "ressource": "eau", "fenetre": 2, "nb_mesures": 2, "tendance": "indeterminee", "premiere_moyenne": null, "derniere_moyenne": null, "points": [{"date_heure": "2026-10-07 07:00", "valeur": 540.00, "moyenne_mobile": null}, {"date_heure": "2026-10-08 19:00", "valeur": 495.00, "moyenne_mobile": 517.50}]},
+    {"batiment": "Administration", "ressource": "electricite", "fenetre": 2, "nb_mesures": 2, "tendance": "indeterminee", "premiere_moyenne": null, "derniere_moyenne": null, "points": [{"date_heure": "2026-10-07 09:00", "valeur": 980.00, "moyenne_mobile": null}, {"date_heure": "2026-10-08 13:20", "valeur": 1320.00, "moyenne_mobile": 1150.00}]},
+    {"batiment": "Cours", "ressource": "eau", "fenetre": 2, "nb_mesures": 1, "tendance": "indeterminee", "premiere_moyenne": null, "derniere_moyenne": null, "points": [{"date_heure": "2026-10-07 11:00", "valeur": 210.00, "moyenne_mobile": null}]},
+    {"batiment": "Laboratoires", "ressource": "chauffage", "fenetre": 2, "nb_mesures": 1, "tendance": "indeterminee", "premiere_moyenne": null, "derniere_moyenne": null, "points": [{"date_heure": "2026-10-07 08:00", "valeur": 1620.00, "moyenne_mobile": null}]},
+    {"batiment": "Bibliotheque", "ressource": "electricite", "fenetre": 2, "nb_mesures": 1, "tendance": "indeterminee", "premiere_moyenne": null, "derniere_moyenne": null, "points": [{"date_heure": "2026-10-07 15:00", "valeur": 1780.00, "moyenne_mobile": null}]},
+    {"batiment": "Residence", "ressource": "electricite", "fenetre": 2, "nb_mesures": 1, "tendance": "indeterminee", "premiere_moyenne": null, "derniere_moyenne": null, "points": [{"date_heure": "2026-10-07 20:00", "valeur": 2210.00, "moyenne_mobile": null}]},
+    {"batiment": "Administration", "ressource": "chauffage", "fenetre": 2, "nb_mesures": 1, "tendance": "indeterminee", "premiere_moyenne": null, "derniere_moyenne": null, "points": [{"date_heure": "2026-10-07 08:30", "valeur": 890.00, "moyenne_mobile": null}]},
+    {"batiment": "Cours", "ressource": "chauffage", "fenetre": 2, "nb_mesures": 1, "tendance": "indeterminee", "premiere_moyenne": null, "derniere_moyenne": null, "points": [{"date_heure": "2026-10-07 08:00", "valeur": 1100.00, "moyenne_mobile": null}]},
+    {"batiment": "Laboratoires", "ressource": "eau", "fenetre": 2, "nb_mesures": 1, "tendance": "indeterminee", "premiere_moyenne": null, "derniere_moyenne": null, "points": [{"date_heure": "2026-10-08 10:00", "valeur": 610.00, "moyenne_mobile": null}]},
+    {"batiment": "Bibliotheque", "ressource": "chauffage", "fenetre": 2, "nb_mesures": 1, "tendance": "indeterminee", "premiere_moyenne": null, "derniere_moyenne": null, "points": [{"date_heure": "2026-10-08 08:00", "valeur": 760.00, "moyenne_mobile": null}]},
+    {"batiment": "Residence", "ressource": "chauffage", "fenetre": 2, "nb_mesures": 1, "tendance": "indeterminee", "premiere_moyenne": null, "derniere_moyenne": null, "points": [{"date_heure": "2026-10-08 07:30", "valeur": 1430.00, "moyenne_mobile": null}]},
+    {"batiment": "Administration", "ressource": "eau", "fenetre": 2, "nb_mesures": 1, "tendance": "indeterminee", "premiere_moyenne": null, "derniere_moyenne": null, "points": [{"date_heure": "2026-10-08 09:15", "valeur": 180.00, "moyenne_mobile": null}]}
   ]
 }

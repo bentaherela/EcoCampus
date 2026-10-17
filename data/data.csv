@@ -21,4 +21,5 @@ id,batiment,ressource,valeur,date_heure,seuil
 20,Administration,electricite,1320.00,2026-10-08 13:20,1500.00
 22,Cours,electricite,2300.00,2026-10-09 14:00,2000.00
 21,Cours,electricite,2100.00,2026-10-09 08:00,2000.00
-23,Cours,electricite,500.00,2026-10-09 09:00,2000.00
+23,Cours,electricite,2000.00,2026-10-09 06:00,2000.00
+24,Cours,electricite,2000.00,2026-10-09 05:00,2000.00
