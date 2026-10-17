@@ -204,8 +204,7 @@ void afficherStatistiques(const StatsBatiment stats[], int nbStats)
 /* ====================================================================
    Tendance (moyenne mobile)
    ==================================================================== */
- 
-/* Moyenne des n valeurs se terminant a l'indice i
+   /* Moyenne des n valeurs se terminant a l'indice i
    (valeurs[i-n+1] ... valeurs[i]).
    A appeler seulement si i >= n - 1, sinon il n'y a pas assez de valeurs. */
 float moyenneMobile(const float valeurs[], int i, int n)
@@ -216,7 +215,7 @@ float moyenneMobile(const float valeurs[], int i, int n)
     }
     return somme / (float)n;
 }
- 
+
 /* Retourne 1 si a et b sont egales, sans tenir compte de la casse */
 static int egalSansCasse(const char *a, const char *b)
 {
@@ -227,21 +226,17 @@ static int egalSansCasse(const char *a, const char *b)
     supprimerEspacesFin(y);
     return strcmp(x, y) == 0;
 }
- 
-/* Affiche la moyenne mobile d'un couple (batiment, ressource) puis conclut
-   sur la tendance. On ne melange pas les ressources (kWh et m3).
-   Retourne le nombre de mesures du couple. */
-int afficherTendance(const Mesure mesures[], int nombre,
-                     const char *batiment, const char *ressource, int fenetre)
+
+/* Selectionne les mesures du couple (batiment, ressource), les classe par date
+   et remplit idx[] (indices dans mesures[]) et valeurs[] (valeurs triees).
+   Le tableau d'origine n'est pas modifie. Retourne le nombre de mesures.
+   idx et valeurs doivent avoir MAX_MESURES elements. */
+static int preparerSerie(const Mesure mesures[], int nombre,
+                         const char *batiment, const char *ressource,
+                         int idx[], float valeurs[])
 {
-    int idx[MAX_MESURES];        /* indices des mesures du couple dans mesures[] */
-    float valeurs[MAX_MESURES];  /* leurs valeurs, classees par date */
     int nb = 0;
- 
-    if (fenetre < 1) {
-        return 0;
-    }
- 
+
     /* 1. selectionner les mesures du couple demande */
     for (int i = 0; i < nombre; i++) {
         if (egalSansCasse(mesures[i].batiment, batiment) &&
@@ -249,19 +244,8 @@ int afficherTendance(const Mesure mesures[], int nombre,
             idx[nb++] = i;
         }
     }
- 
-    if (nb == 0) {
-        printf("Aucune mesure pour ce batiment et cette ressource.\n");
-        return 0;
-    }
-    if (nb < fenetre) {
-        printf("Pas assez de mesures (%d) pour une moyenne mobile sur %d valeurs.\n",
-               nb, fenetre);
-        return nb;
-    }
 
-    /* 2. trier les INDICES par date (tri a bulles) :
-       le tableau d'origine n'est pas modifie */
+    /* 2. trier les INDICES par date (tri a bulles) */
     for (int i = 0; i < nb - 1; i++) {
         for (int j = 0; j < nb - 1 - i; j++) {
             if (strcmp(mesures[idx[j]].date_heure,
@@ -277,18 +261,63 @@ int afficherTendance(const Mesure mesures[], int nombre,
     for (int i = 0; i < nb; i++) {
         valeurs[i] = mesures[idx[i]].valeur;
     }
-
+    return nb;
+}
+/* Conclusion sur la tendance : compare la premiere et la derniere moyenne
+   mobile. Variation de moins de 5 % = stable.
+   Retourne "hausse", "baisse", "stable" ou "indeterminee" (il faut au moins
+   fenetre + 1 valeurs). premiere et derniere sont remplies si determinee. */
+static const char *conclureTendance(const float valeurs[], int nb, int fenetre,
+                                    float *premiere, float *derniere)
+{
+    if (fenetre < 1 || nb <= fenetre) {
+        return "indeterminee";
+    }
+ 
+    *premiere = moyenneMobile(valeurs, fenetre - 1, fenetre);
+    *derniere = moyenneMobile(valeurs, nb - 1, fenetre);
+ 
+    float diff = *derniere - *premiere;
+    float marge = 0.05f * (*premiere < 0 ? -*premiere : *premiere);
+ 
+    if (diff > marge) return "hausse";
+    if (diff < -marge) return "baisse";
+    return "stable";
+}
+ 
+/* Affiche la moyenne mobile d'un couple (batiment, ressource) puis conclut
+   sur la tendance. On ne melange pas les ressources (kWh et m3).
+   Retourne le nombre de mesures du couple. */
+int afficherTendance(const Mesure mesures[], int nombre,
+                     const char *batiment, const char *ressource, int fenetre)
+{
+    int idx[MAX_MESURES];        /* indices des mesures du couple dans mesures[] */
+    float valeurs[MAX_MESURES];  /* leurs valeurs, classees par date */
+ 
+    if (fenetre < 1) {
+        return 0;
+    }
+ 
+    int nb = preparerSerie(mesures, nombre, batiment, ressource, idx, valeurs);
+ 
+    if (nb == 0) {
+        printf("Aucune mesure pour ce batiment et cette ressource.\n");
+        return 0;
+    }
+    if (nb < fenetre) {
+        printf("Pas assez de mesures (%d) pour une moyenne mobile sur %d valeurs.\n",
+               nb, fenetre);
+        return nb;
+    }
+ 
     /* 4. afficher les valeurs et leur moyenne mobile */
     printf("\nTendance : %s - %s (moyenne mobile sur %d valeurs)\n",
            batiment, ressource, fenetre);
     printf("%-18s %10s %12s\n", "Date/heure", "Valeur", "Moy. mobile");
-
-    float premiere = 0.0f, derniere = 0.0f;
+ 
     for (int i = 0; i < nb; i++) {
         if (i >= fenetre - 1) {
             float mm = moyenneMobile(valeurs, i, fenetre);
-            if (i == fenetre - 1) premiere = mm;   /* 1ere moyenne calculable */
-            derniere = mm;                          /* derniere moyenne */
             printf("%-18s %10.2f %12.2f\n",
                    mesures[idx[i]].date_heure, valeurs[i], mm);
         } else {
@@ -297,33 +326,30 @@ int afficherTendance(const Mesure mesures[], int nombre,
                    mesures[idx[i]].date_heure, valeurs[i], "-");
         }
     }
-
-    /* 5. conclusion : on compare la premiere et la derniere moyenne mobile.
-       Variation de moins de 5 % = stable. */
-    if (nb == fenetre) {
+ 
+    /* 5. conclusion : on compare la premiere et la derniere moyenne mobile */
+    float premiere = 0.0f, derniere = 0.0f;
+    const char *conclusion = conclureTendance(valeurs, nb, fenetre,
+                                              &premiere, &derniere);
+ 
+    if (strcmp(conclusion, "indeterminee") == 0) {
         /* une seule moyenne mobile : il n'y a rien a comparer */
         printf("Tendance : impossible a determiner (il faut au moins %d mesures).\n",
                fenetre + 1);
-        return nb;
-    }
-
-    float diff = derniere - premiere;
-    float marge = 0.05f * (premiere < 0 ? -premiere : premiere);
-
-    if (diff > marge) {
+    } else if (strcmp(conclusion, "hausse") == 0) {
         printf("Tendance : HAUSSE (%.2f -> %.2f)\n", premiere, derniere);
-    } else if (diff < -marge) {
+    } else if (strcmp(conclusion, "baisse") == 0) {
         printf("Tendance : BAISSE (%.2f -> %.2f)\n", premiere, derniere);
     } else {
         printf("Tendance : STABLE (%.2f -> %.2f)\n", premiere, derniere);
     }
     return nb;
 }
-
+ 
 /* ====================================================================
    Export JSON
    ==================================================================== */
-
+ 
 /* Ecrit une chaine entre guillemets en echappant " \ et les caracteres de controle */
 static void ecrireChaineJSON(FILE *f, const char *s)
 {
@@ -341,32 +367,81 @@ static void ecrireChaineJSON(FILE *f, const char *s)
     }
     fputc('"', f);
 }
-
+ 
+/* Ecrit le tableau "tendances" : une entree par groupe (batiment, ressource)
+   avec les points (valeur + moyenne mobile) et la conclusion.
+   moyenne_mobile vaut null tant qu'il n'y a pas assez de valeurs. */
+static void ecrireTendancesJSON(FILE *f, const Mesure mesures[], int nombre,
+                                const StatsBatiment stats[], int nbStats)
+{
+    int idx[MAX_MESURES];
+    float valeurs[MAX_MESURES];
+    int fenetre = FENETRE_MOBILE;
+ 
+    fprintf(f, "  \"tendances\": [\n");
+    for (int k = 0; k < nbStats; k++) {
+        int nb = preparerSerie(mesures, nombre, stats[k].batiment,
+                               stats[k].ressource, idx, valeurs);
+        float premiere = 0.0f, derniere = 0.0f;
+        const char *conclusion = conclureTendance(valeurs, nb, fenetre,
+                                                  &premiere, &derniere);
+        int determinee = (strcmp(conclusion, "indeterminee") != 0);
+ 
+        fprintf(f, "    {\"batiment\": ");
+        ecrireChaineJSON(f, stats[k].batiment);
+        fprintf(f, ", \"ressource\": ");
+        ecrireChaineJSON(f, stats[k].ressource);
+        fprintf(f, ", \"fenetre\": %d, \"nb_mesures\": %d, \"tendance\": \"%s\", ",
+                fenetre, nb, conclusion);
+        if (determinee) {
+            fprintf(f, "\"premiere_moyenne\": %.2f, \"derniere_moyenne\": %.2f, ",
+                    premiere, derniere);
+        } else {
+            fprintf(f, "\"premiere_moyenne\": null, \"derniere_moyenne\": null, ");
+        }
+ 
+        fprintf(f, "\"points\": [");
+        for (int i = 0; i < nb; i++) {
+            fprintf(f, "{\"date_heure\": ");
+            ecrireChaineJSON(f, mesures[idx[i]].date_heure);
+            fprintf(f, ", \"valeur\": %.2f, \"moyenne_mobile\": ", valeurs[i]);
+            if (i >= fenetre - 1) {
+                fprintf(f, "%.2f", moyenneMobile(valeurs, i, fenetre));
+            } else {
+                fprintf(f, "null");
+            }
+            fprintf(f, "}%s", (i < nb - 1) ? ", " : "");
+        }
+        fprintf(f, "]}%s\n", (k < nbStats - 1) ? "," : "");
+    }
+    fprintf(f, "  ]\n");
+}
+ 
 int exporterJSON(const char *nomFichier, const Mesure mesures[], int nombre)
 {
     StatsBatiment stats[MAX_STATS];
     int nbStats = calculerStatistiques(mesures, nombre, stats, MAX_STATS);
     int nbAlertes = 0;
-
+ 
     for (int i = 0; i < nombre; i++) {
         if (estAnomalie(&mesures[i])) nbAlertes++;
     }
-
+ 
     FILE *f = fopen(nomFichier, "w");
     if (f == NULL) {
         printf("Erreur : impossible de creer le fichier %s.\n", nomFichier);
         return 0;
     }
-
+ 
     fprintf(f, "{\n");
-
+ 
     /* --- resume --- */
     fprintf(f, "  \"resume\": {\n");
     fprintf(f, "    \"nb_mesures\": %d,\n", nombre);
     fprintf(f, "    \"nb_alertes\": %d,\n", nbAlertes);
     fprintf(f, "    \"nb_groupes\": %d\n", nbStats);
     fprintf(f, "  },\n");
-
+ 
     /* --- mesures --- */
     fprintf(f, "  \"mesures\": [\n");
     for (int i = 0; i < nombre; i++) {
@@ -382,7 +457,7 @@ int exporterJSON(const char *nomFichier, const Mesure mesures[], int nombre)
                 (i < nombre - 1) ? "," : "");
     }
     fprintf(f, "  ],\n");
-
+ 
     /* --- statistiques --- */
     fprintf(f, "  \"statistiques\": [\n");
     for (int k = 0; k < nbStats; k++) {
@@ -396,10 +471,13 @@ int exporterJSON(const char *nomFichier, const Mesure mesures[], int nombre)
                 stats[k].min, stats[k].max, stats[k].nb_alertes,
                 (k < nbStats - 1) ? "," : "");
     }
-    fprintf(f, "  ]\n");
-
+    fprintf(f, "  ],\n");
+ 
+    /* --- tendances (moyenne mobile) --- */
+    ecrireTendancesJSON(f, mesures, nombre, stats, nbStats);
+ 
     fprintf(f, "}\n");
-
+ 
     int ok = !ferror(f);
     if (fclose(f) != 0) ok = 0;
     if (!ok) {

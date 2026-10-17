@@ -49,6 +49,7 @@ int chargerMesures(const char *nomFichier,
     return nombre;
 }
 
+/*sauvegarde immediate dans le CSV */
 int sauvegarderMesures(const char *nomFichier, const Mesure mesures[], int nombre)
 {
     FILE *f = fopen(nomFichier, "w");
