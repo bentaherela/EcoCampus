@@ -18,7 +18,7 @@ const getAuth = () => {
     return JSON.parse(
       sessionStorage.getItem(AUTH_KEY) ||
         localStorage.getItem(AUTH_KEY) ||
-        "null"
+        "null",
     );
   } catch {
     return null;
@@ -30,7 +30,7 @@ async function sha(s) {
   try {
     const b = await crypto.subtle.digest(
       "SHA-256",
-      new TextEncoder().encode(s)
+      new TextEncoder().encode(s),
     );
     return [...new Uint8Array(b)]
       .map((x) => x.toString(16).padStart(2, "0"))
@@ -86,7 +86,7 @@ async function changePassword(u, p) {
 function startSession(u, remember) {
   (remember ? localStorage : sessionStorage).setItem(
     AUTH_KEY,
-    JSON.stringify({ u, t: Date.now() })
+    JSON.stringify({ u, t: Date.now() }),
   );
   location.replace(HOME_URL);
 }
@@ -112,7 +112,7 @@ function initLogin() {
     b.addEventListener("click", () => {
       const i = b.previousElementSibling;
       i.type = i.type === "password" ? "text" : "password";
-    })
+    }),
   );
   const fail = (form, el, msg) => {
     el.textContent = msg;
@@ -132,7 +132,7 @@ function initLogin() {
       return fail(
         fIn,
         err,
-        "Entrez votre nom d'utilisateur et votre mot de passe."
+        "Entrez votre nom d'utilisateur et votre mot de passe.",
       );
     if (await checkLogin(u, p))
       startSession(u.trim().toLowerCase(), $("#loginRemember").checked);
@@ -184,6 +184,17 @@ const TYPES = {
   Résidence: "Résidence",
   Administration: "Administration",
 };
+/* Signature des données : change dès que le contenu de data.json change.
+   Sert à savoir si le navigateur garde une ancienne copie (localStorage). */
+function signature(mesures) {
+  const s = JSON.stringify(mesures);
+  let h = 5381;
+  for (let i = 0; i < s.length; i++) {
+    h = ((h << 5) + h + s.charCodeAt(i)) | 0; // hash « djb2 »
+  }
+  return mesures.length + "-" + (h >>> 0).toString(36);
+}
+
 function adapt(data) {
   const mesures = data.mesures.map((m) => ({
     ...m,
@@ -204,7 +215,7 @@ function adapt(data) {
     mesures,
     batiments,
     precedent: data.precedent || {},
-    genere_le: data.genere_le || "",
+    genere_le: data.genere_le || signature(data.mesures),
   };
 }
 
@@ -328,8 +339,8 @@ function buildFiles(list = state.mesures) {
         derniere - premiere > marge
           ? "hausse"
           : derniere - premiere < -marge
-          ? "baisse"
-          : "stable";
+            ? "baisse"
+            : "stable";
     }
     return {
       batiment: s[0].batiment,
@@ -520,7 +531,7 @@ async function persist() {
   try {
     localStorage.setItem(
       KEY,
-      JSON.stringify({ v: state.generated, m: state.mesures })
+      JSON.stringify({ v: state.generated, m: state.mesures }),
     );
   } catch {}
   return true;
@@ -536,9 +547,9 @@ const esc = (s) =>
   String(s).replace(
     /[&<>"']/g,
     (c) =>
-      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[
+      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[
         c
-      ])
+      ],
   );
 
 /* ---------- Réglages ---------- */
@@ -653,7 +664,7 @@ function ask({ title, text = "", fields = [], ok = "Valider" }) {
                 }" value="${esc(f.value ?? "")}" ${
                   f.type === "number" ? `step="any" min="${f.min ?? 0}"` : ""
                 } ${f.required === false ? "" : "required"}>`
-          }</label>`
+          }</label>`,
       )
       .join("")}
       <div class="modal-actions"><button type="button" class="btn btn-outline" data-x>Annuler</button>
@@ -663,7 +674,7 @@ function ask({ title, text = "", fields = [], ok = "Valider" }) {
     $("[data-x]", d).onclick = () => d.close("cancel");
     d.addEventListener("close", () => {
       res(
-        d.returnValue === "ok" ? Object.fromEntries(new FormData(form)) : null
+        d.returnValue === "ok" ? Object.fromEntries(new FormData(form)) : null,
       );
       d.remove();
     });
@@ -741,7 +752,7 @@ function clean(data) {
   if (rejected)
     toast(
       `${rejected} mesure(s) invalide(s) ignorée(s) dans data.json.`,
-      "alert"
+      "alert",
     );
 }
 
@@ -749,7 +760,7 @@ function clean(data) {
 function totalPrev(res, bats) {
   return (bats || Object.keys(state.precedent)).reduce(
     (a, b) => a + (state.precedent[b]?.[res] || 0),
-    0
+    0,
   );
 }
 function setTrend(el, now, prev, short) {
@@ -769,7 +780,7 @@ function kpi(sel, res, bats) {
   const card = $(sel);
   if (!card) return;
   const list = ofRes(state.mesures, res).filter(
-    (m) => !bats || bats.includes(m.batiment)
+    (m) => !bats || bats.includes(m.batiment),
   );
   $("strong", card).innerHTML = `${fmt(sum(list))} <small>${
     RES[res].unit
@@ -817,7 +828,7 @@ function lineCfg(list) {
   const datasets = Object.keys(RES).map((r) => ({
     label: r,
     data: days.map((d) =>
-      sum(ofRes(list, r).filter((m) => m.date.startsWith(d)))
+      sum(ofRes(list, r).filter((m) => m.date.startsWith(d))),
     ),
     borderColor: cssVar(RES[r].css),
     backgroundColor: cssVar(RES[r].css),
@@ -860,7 +871,7 @@ function setDonut(el, vals) {
   el.style.background = `conic-gradient(${parts.join(",")})`;
   const legend = $$(".legend-list b", el.closest(".donut-area"));
   vals.forEach(
-    (v, i) => (legend[i].textContent = Math.round((v / total) * 100) + "%")
+    (v, i) => (legend[i].textContent = Math.round((v / total) * 100) + "%"),
   );
 }
 
@@ -955,18 +966,18 @@ function setupPeriod(live, onChange) {
       preset !== "custom"
         ? PERIOD_NAMES[preset]
         : a && b
-        ? `${short(a)} → ${short(b)}`
-        : a
-        ? `Depuis le ${short(a)}`
-        : b
-        ? `Jusqu'au ${short(b)}`
-        : PERIOD_NAMES.all;
+          ? `${short(a)} → ${short(b)}`
+          : a
+            ? `Depuis le ${short(a)}`
+            : b
+              ? `Jusqu'au ${short(b)}`
+              : PERIOD_NAMES.all;
     btn.classList.toggle(
       "on",
-      preset !== "all" && (preset !== "custom" || !!(a || b))
+      preset !== "all" && (preset !== "custom" || !!(a || b)),
     );
     $$(".period-chips button", pop).forEach((c) =>
-      c.classList.toggle("active", c.dataset.p === preset)
+      c.classList.toggle("active", c.dataset.p === preset),
     );
   };
   const close = () => {
@@ -999,13 +1010,13 @@ function setupPeriod(live, onChange) {
       [fr.value, to.value] = presetRange(preset);
       close();
       commit();
-    })
+    }),
   );
   [fr, to].forEach((i) =>
     i.addEventListener("change", () => {
       preset = "custom";
       commit();
-    })
+    }),
   );
   const tick = () => {
     $("#pToday").textContent =
@@ -1064,10 +1075,10 @@ const pages = {
           .map(
             (m) =>
               `<div class="alert-item"><span class="alert-symbol">!</span><div><b>${esc(
-                m.batiment
+                m.batiment,
               )} — ${esc(m.ressource)} : ${fmt(m.valeur)} ${m.unite}${seuilTxt(
-                m
-              )}</b><small>${fmtDate(m.date)}</small></div></div>`
+                m,
+              )}</b><small>${fmtDate(m.date)}</small></div></div>`,
           )
           .join("")
       : '<p class="muted">Aucune alerte : tout est sous les seuils.</p>';
@@ -1084,25 +1095,38 @@ const pages = {
     if (rawQ) {
       const q = norm(rawQ);
       state.mesures = state.mesures.filter(
-        (m) => norm(m.batiment).includes(q) || norm(m.ressource).includes(q)
+        (m) => norm(m.batiment).includes(q) || norm(m.ressource).includes(q),
       );
       $(".page-title").insertAdjacentHTML(
         "afterend",
         `<div class="notice">Filtre actif : <b>« ${esc(rawQ)} »</b> — ${
           state.mesures.length
-        } mesure(s). <a href="graphique.html" class="text-link">✕ Effacer le filtre</a></div>`
+        } mesure(s). <a href="graphique.html" class="text-link">✕ Effacer le filtre</a></div>`,
       );
     }
     per.info(state.mesures.length);
     const vals = Object.keys(RES).map((r) => sum(ofRes(state.mesures, r)));
     const [d1, d2] = $$(".donut");
-    setDonut(d1, vals);
-    $("strong", d1).textContent = fmt(vals.reduce((a, b) => a + b, 0));
-    $("small", d1).textContent = "kWh + m³";
+    /* Donut en kWh uniquement : l'eau (m³) n'est pas additionnée aux kWh.
+       Son total est affiché à part dans la légende. */
+    const names = Object.keys(RES);
+    const valsKwh = names.map((r, i) => (RES[r].unit === "kWh" ? vals[i] : 0));
+    setDonut(d1, valsKwh);
+    $("strong", d1).textContent = fmt(valsKwh.reduce((a, b) => a + b, 0));
+    $("small", d1).textContent = "kWh";
+    const iEau = names.findIndex((r) => RES[r].unit === "m³");
+    $$(".legend-list b", d1.closest(".donut-area"))[iEau].textContent =
+      fmt(vals[iEau]) + " m³";
+    const sub = $$(".panel").find((p) =>
+      $("h2", p)?.textContent.includes("par ressource"),
+    );
+    if (sub)
+      $("p", sub).textContent =
+        "Électricité et chauffage en kWh · eau en m³ à part";
     const al = state.mesures.filter((m) => m.alerte);
     setDonut(
       d2,
-      Object.keys(RES).map((r) => ofRes(al, r).length)
+      Object.keys(RES).map((r) => ofRes(al, r).length),
     );
     $("strong", d2).textContent = al.length;
 
@@ -1110,7 +1134,7 @@ const pages = {
       .filter((b) => !rawQ || byBat(b.nom).length)
       .map((b) => b.nom);
     const subtitle = $$(".panel").find((p) =>
-      $("h2", p)?.textContent.includes("par bâtiment")
+      $("h2", p)?.textContent.includes("par bâtiment"),
     );
     if (subtitle)
       $("p", subtitle).textContent =
@@ -1126,7 +1150,7 @@ const pages = {
       t.addEventListener("click", () => {
         const v = views[t.textContent.trim()] || views["Vue globale"];
         panels.forEach((p, i) => (p.hidden = !v.includes(i)));
-      })
+      }),
     );
     swapForCanvas(".bar-chart", "chartBars");
     mkChart("chartBars", () => {
@@ -1180,7 +1204,7 @@ const pages = {
         ([b, v]) =>
           `<div><span>${esc(b)}</span><i><b style="width:${
             (v / top) * 100
-          }%"></b></i><strong>${fmt(v)}</strong></div>`
+          }%"></b></i><strong>${fmt(v)}</strong></div>`,
       )
       .join("");
 
@@ -1197,7 +1221,7 @@ const pages = {
       $(".trend-panel > p").innerHTML = `La consommation est en ${
         pct <= 0 ? "baisse" : "hausse"
       } de <b>${Math.abs(pct).toFixed(
-        0
+        0,
       )}%</b> par rapport à la période précédente.`;
       st.className = "status " + (pct <= 0 ? "normal" : "warning");
       st.textContent =
@@ -1227,11 +1251,11 @@ const pages = {
         `<article class="building-card"><div class="building-photo photo-five"><span>${esc(
           (b.type || "").toUpperCase()
         )}</span></div><div class="building-info"><h2>▦ ${esc(
-          b.nom
+          b.nom,
         )}</h2><div class="building-value">0 <small>kWh</small><span></span></div><div class="mini-progress"><i style="width:0%"></i></div><a href="detail.html?b=${encodeURIComponent(
-          b.nom
-        )}" class="text-link">Détails →</a></div></article>`
-      )
+          b.nom,
+        )}" class="text-link">Détails →</a></div></article>`,
+      ),
     );
 
     const elec = (n) => sum(ofRes(byBat(n), "Électricité"));
@@ -1247,16 +1271,16 @@ const pages = {
       if (!$(".del-bat", card))
         $(".building-info", card).insertAdjacentHTML(
           "beforeend",
-          '<button type="button" class="del-bat" title="Supprimer ce bâtiment">🗑 Supprimer</button>'
+          '<button type="button" class="del-bat" title="Supprimer ce bâtiment">🗑 Supprimer</button>',
         );
       $(".building-value", card).innerHTML = `${fmt(
-        elec(name)
+        elec(name),
       )} <small>kWh</small><span></span>`;
       setTrend(
         $(".building-value span", card),
         elec(name),
         totalPrev("Électricité", [name]),
-        true
+        true,
       );
       $(".mini-progress i", card).style.width = (elec(name) / max) * 100 + "%";
       $("a.text-link", card).href = "detail.html?b=" + encodeURIComponent(name);
@@ -1294,13 +1318,13 @@ const pages = {
         localStorage.setItem(DKEY, JSON.stringify(del));
         localStorage.setItem(
           BKEY,
-          JSON.stringify(readList(BKEY).filter((x) => x.nom !== name))
+          JSON.stringify(readList(BKEY).filter((x) => x.nom !== name)),
         );
       }
       toast(
         SERVER
           ? "Bâtiment supprimé (data.json et data.csv mis à jour)."
-          : "Bâtiment supprimé."
+          : "Bâtiment supprimé.",
       );
       setTimeout(() => location.reload(), 600);
     });
@@ -1310,7 +1334,7 @@ const pages = {
     const topIn = $(".topbar .search input");
     $("#buildingGrid").insertAdjacentHTML(
       "afterend",
-      '<p class="muted" id="noBat" hidden>Aucun bâtiment trouvé.</p>'
+      '<p class="muted" id="noBat" hidden>Aucun bâtiment trouvé.</p>',
     );
     const apply = () => {
       const q = norm(search.value || topIn.value);
@@ -1385,21 +1409,21 @@ const pages = {
             per.inRange(m) &&
             (!F.q ||
               norm(`${m.id} ${m.batiment} ${m.ressource} ${m.valeur}`).includes(
-                F.q
-              ))
+                F.q,
+              )),
         )
         .sort((a, b) => b.date.localeCompare(a.date) || b.id - a.id);
 
     const row = (m) => {
       const r = RES[m.ressource];
       return `<tr class="${m.alerte ? "row-alert" : ""}"><td>${String(
-        m.id
+        m.id,
       ).padStart(3, "0")}</td><td>${esc(
-        m.batiment
+        m.batiment,
       )}</td><td><span class="resource-label ${r.cls}">${r.icon} ${
         m.ressource
       }</span></td><td>${fmt(m.valeur)}</td><td>${m.unite}</td><td>${fmtDate(
-        m.date
+        m.date,
       )}</td><td><span class="status ${m.alerte ? "warning" : "normal"}">${
         m.alerte ? "Alerte" : "Normal"
       }</span></td><td><button class="row-action" data-act="edit" data-id="${
@@ -1433,7 +1457,7 @@ const pages = {
           (_, i) =>
             `<button data-p="${i + 1}" class="${
               i + 1 === F.page ? "selected" : ""
-            }">${i + 1}</button>`
+            }">${i + 1}</button>`,
         ).join("") +
         `<button data-p="${F.page + 1}" ${
           F.page === pages ? "disabled" : ""
@@ -1446,13 +1470,13 @@ const pages = {
       F.q = norm((textSearch.value || topSearch.value).trim());
       F.page = 1;
       $$(".resource-tabs [data-resource]").forEach((t) =>
-        t.classList.toggle("active", t.dataset.resource === F.r)
+        t.classList.toggle("active", t.dataset.resource === F.r),
       );
       render();
     };
 
     ["#buildingFilter", "#resourceFilter"].forEach((s) =>
-      $(s).addEventListener("change", sync)
+      $(s).addEventListener("change", sync),
     );
     textSearch.addEventListener("input", sync);
     topSearch.addEventListener("input", sync);
@@ -1464,7 +1488,7 @@ const pages = {
       t.addEventListener("click", () => {
         $("#resourceFilter").value = t.dataset.resource;
         sync();
-      })
+      }),
     );
     $(".pagination").addEventListener("click", (e) => {
       const b = e.target.closest("button[data-p]");
@@ -1593,7 +1617,7 @@ const pages = {
       const { bat, res } = r,
         valeur = +r.valeur;
       const ref = state.mesures.find(
-        (m) => m.batiment === bat && m.ressource === res
+        (m) => m.batiment === bat && m.ressource === res,
       );
       const now = new Date();
       const m = {
@@ -1620,7 +1644,7 @@ const pages = {
           `Nouvelle anomalie : ${bat} — ${res} ${fmt(valeur)} ${
             m.unite
           }${seuilTxt(m)}`,
-          "alert"
+          "alert",
         );
       else if (SET.notif_ajout)
         toast(
@@ -1689,7 +1713,7 @@ const pages = {
     const go = (pane) => {
       $$(".settings-pane").forEach((p) => (p.hidden = p.dataset.pane !== pane));
       tabs.forEach((t) =>
-        t.classList.toggle("active", t.dataset.pane === pane)
+        t.classList.toggle("active", t.dataset.pane === pane),
       );
     };
     const find = () => {
@@ -1697,7 +1721,7 @@ const pages = {
       const q = norm(top.value.trim());
       if (!q) return 0;
       const hits = $$(
-        ".settings-card label, .settings-card h2, .setting-link"
+        ".settings-card label, .settings-card h2, .setting-link",
       ).filter((el) => norm(el.textContent).includes(q));
       hits.forEach((h) => h.classList.add("hit"));
       if (hits.length) go(hits[0].closest(".settings-pane").dataset.pane);
@@ -1779,10 +1803,10 @@ function initSearch() {
             .map(
               (b) =>
                 `<a href="${PAGES_URL}detail.html?b=${encodeURIComponent(
-                  b.nom
+                  b.nom,
                 )}"><span>▦</span>${esc(b.nom)}<small>${esc(
-                  b.type || ""
-                )}</small></a>`
+                  b.type || "",
+                )}</small></a>`,
             )
             .join("")
         : "") +
@@ -1793,7 +1817,7 @@ function initSearch() {
             .join("")
         : "") +
       `<h4>Mesures</h4><a href="${PAGES_URL}donnees.html?q=${encodeURIComponent(
-        raw
+        raw,
       )}"><span>⌕</span>Chercher « ${esc(raw)} » dans les mesures</a>`;
     box.hidden = false;
   };
@@ -1817,7 +1841,7 @@ function initCommon() {
   if (who && $(".top-actions")) {
     $(".top-actions").insertAdjacentHTML(
       "beforeend",
-      '<button class="icon-btn logout-btn" title="Se déconnecter" aria-label="Se déconnecter">⎋</button>'
+      '<button class="icon-btn logout-btn" title="Se déconnecter" aria-label="Se déconnecter">⎋</button>',
     );
     $(".logout-btn").addEventListener("click", logout);
     const pr = $(".profile");
@@ -1841,7 +1865,7 @@ function initCommon() {
       n
         ? `${n} alerte(s) active(s). Détails dans la page Données.`
         : "Aucune alerte active.",
-      n ? "alert" : "ok"
+      n ? "alert" : "ok",
     );
   });
 
@@ -1880,7 +1904,7 @@ function initCommon() {
     if (/[,"\n\r]/.test(nom) || nom.length > 49)
       return toast(
         "Nom invalide : pas de virgule ni de guillemet, 49 caractères max.",
-        "alert"
+        "alert",
       );
     const nb = { nom, type: r.type, etages: +r.etages, surface: +r.surface };
     state.batiments.push(nb);
@@ -1892,8 +1916,8 @@ function initCommon() {
       localStorage.setItem(
         DKEY,
         JSON.stringify(
-          readList(DKEY).filter((x) => x.toLowerCase() !== nom.toLowerCase())
-        )
+          readList(DKEY).filter((x) => x.toLowerCase() !== nom.toLowerCase()),
+        ),
       );
       const list = readList(BKEY);
       list.push(nb);
@@ -1916,9 +1940,9 @@ function initCommon() {
     $$(".settings-tabs .tab").forEach((t) =>
       t.addEventListener("click", () =>
         $$(".settings-pane").forEach(
-          (p) => (p.hidden = p.dataset.pane !== t.dataset.pane)
-        )
-      )
+          (p) => (p.hidden = p.dataset.pane !== t.dataset.pane),
+        ),
+      ),
     );
     $("#pwdBtn").addEventListener("click", async (e) => {
       e.preventDefault();
@@ -1942,7 +1966,7 @@ function initCommon() {
       if (r.n.length < 8 || r.n !== r.c)
         return toast(
           "Nouveau mot de passe trop court (8 min.) ou confirmation différente.",
-          "alert"
+          "alert",
         );
       await changePassword(me.u, r.n);
       toast("Mot de passe modifié.");
@@ -1959,7 +1983,7 @@ function initCommon() {
         })
       ) {
         [KEY, BKEY, DKEY, SKEY, "ecocampus-theme"].forEach((k) =>
-          localStorage.removeItem(k)
+          localStorage.removeItem(k),
         );
         location.reload();
       }
@@ -1969,18 +1993,18 @@ function initCommon() {
   $$(".chart-tabs .tab, .detail-tabs .tab").forEach((tab) =>
     tab.addEventListener("click", () => {
       $$(".tab", tab.parentElement).forEach((t) =>
-        t.classList.remove("active")
+        t.classList.remove("active"),
       );
       tab.classList.add("active");
-    })
+    }),
   );
   $$(".settings-tabs .tab").forEach((tab) =>
     tab.addEventListener("click", () => {
       $$(".tab", tab.parentElement).forEach((t) =>
-        t.classList.remove("active")
+        t.classList.remove("active"),
       );
       tab.classList.add("active");
-    })
+    }),
   );
 }
 
