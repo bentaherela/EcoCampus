@@ -8,6 +8,9 @@ Programme en C qui charge des mesures depuis un fichier CSV, les gère (ajout, r
 
 ## Structure du projet
 
+
+
+
 EcoCampus/
 ├── c/
 │ ├── main.c # programme principal (menu)
