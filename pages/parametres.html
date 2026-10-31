@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>EcoCampus — Paramètres</title>
+    <link rel="stylesheet" href="../css/style.css" />
+  </head>
+  <body data-page="settings">
+    <div class="app-shell">
+      <aside class="sidebar">
+        <a class="brand" href="../index.html"
+          ><span class="brand-icon">♻</span
+          ><span><b>EcoCampus</b><small>Un campus plus durable</small></span></a
+        >
+        <nav class="nav">
+          <a href="../index.html"><span>⌂</span>Tableau de bord</a
+          ><a href="donnees.html"><span>▤</span>Données</a
+          ><a href="graphique.html"><span>▥</span>Graphiques</a
+          ><a href="batiment.html"><span>▦</span>Bâtiments</a
+          ><a class="active" href="parametres.html"><span>⚙</span>Paramètres</a>
+        </nav>
+        <div class="sidebar-bottom">
+          <div class="campus-line">♧ ♧ ♧</div>
+          <b>Ensemble pour un campus<br />plus durable</b>
+        </div>
+      </aside>
+      <main class="main">
+        <header class="topbar">
+          <div class="mobile-brand">♻ EcoCampus</div>
+          <label class="search"
+            >⌕ <input placeholder="Rechercher un bâtiment, une ressource..."
+          /></label>
+          <div class="top-actions">
+            <button class="icon-btn" title="Thème" id="themeToggle">☼</button
+            ><button class="icon-btn" title="Notifications">♧</button
+            ><span class="avatar">G</span
+            ><span class="profile">Groupe DSI2</span>
+          </div>
+        </header>
+        <section class="content">
+          <div class="page-title">
+            <div>
+              <span class="eyebrow">PERSONNALISATION</span>
+              <h1>Paramètres</h1>
+              <p>Configurez votre application et vos préférences.</p>
+            </div>
+          </div>
+          <div class="settings-tabs">
+            <button class="tab active" data-pane="general" type="button">
+              Général
+            </button>
+            <button class="tab" data-pane="seuils" type="button">
+              Seuils de consommation
+            </button>
+            <button class="tab" data-pane="notifs" type="button">
+              Notifications
+            </button>
+            <button class="tab" data-pane="look" type="button">
+              Apparence
+            </button>
+          </div>
+          <form id="settingsForm">
+            <div class="settings-grid settings-pane" data-pane="general">
+              <article class="panel settings-card">
+                <h2>Informations du campus</h2>
+                <label>Nom du campus<input name="campus" required /></label>
+                <label>Localisation<input name="lieu" /></label>
+                <label>Nombre de bâtiments<input name="nb" readonly /></label>
+                <h2 class="subhead">Exportation des données</h2>
+                <label
+                  >Format par défaut<select name="format">
+                    <option>CSV</option>
+                    <option>JSON</option>
+                    <option>Excel</option>
+                  </select></label
+                >
+              </article>
+              <article class="panel settings-card">
+                <h2>Sécurité</h2>
+                <a class="setting-link" href="#" id="pwdBtn"
+                  >♧ Changer le mot de passe <span>›</span></a
+                >
+                <label class="switch-row"
+                  >Authentification à deux facteurs<input
+                    type="checkbox"
+                    class="switch"
+                    name="a2f"
+                /></label>
+                <a class="setting-link" href="#" id="resetAll"
+                  >↺ Réinitialiser toutes les données <span>›</span></a
+                >
+              </article>
+            </div>
+            <div class="settings-grid settings-pane" data-pane="seuils" hidden>
+              <article class="panel settings-card">
+                <h2>Seuils d'alerte par défaut</h2>
+                <label
+                  >Électricité (kWh)<input
+                    type="number"
+                    min="0"
+                    name="seuil_Électricité"
+                /></label>
+                <label
+                  >Eau (m³)<input type="number" min="0" name="seuil_Eau"
+                /></label>
+                <label
+                  >Chauffage (kWh)<input
+                    type="number"
+                    min="0"
+                    name="seuil_Chauffage"
+                /></label>
+              </article>
+              <article class="panel settings-card">
+                <h2>À savoir</h2>
+                <p class="muted">
+                  Ces seuils s'appliquent aux nouvelles mesures lorsqu'aucun
+                  seuil n'existe déjà pour ce bâtiment et cette ressource.
+                </p>
+              </article>
+            </div>
+            <div class="settings-grid settings-pane" data-pane="notifs" hidden>
+              <article class="panel settings-card">
+                <h2>Notifications</h2>
+                <label class="switch-row"
+                  >Alerte lors d'un dépassement de seuil<input
+                    type="checkbox"
+                    class="switch"
+                    name="notif_alerte"
+                /></label>
+                <label class="switch-row"
+                  >Confirmation à l'ajout d'une mesure<input
+                    type="checkbox"
+                    class="switch"
+                    name="notif_ajout"
+                /></label>
+              </article>
+            </div>
+            <div class="settings-grid settings-pane" data-pane="look" hidden>
+              <article class="panel settings-card">
+                <h2>Apparence</h2>
+                <label>Mode d'affichage</label>
+                <div class="radio-row">
+                  <label
+                    ><input type="radio" name="theme" value="light" />
+                    Clair</label
+                  >
+                  <label
+                    ><input type="radio" name="theme" value="dark" />
+                    Sombre</label
+                  >
+                </div>
+                <label
+                  >Taille du texte<select name="taille">
+                    <option value="normal">Normale</option>
+                    <option value="grand">Grande</option>
+                  </select></label
+                >
+              </article>
+            </div>
+            <button class="btn save-bar" type="submit">✓ Enregistrer</button>
+          </form>
+        </section>
+        <footer class="footer">
+          <span>♻ EcoCampus</span
+          ><span>© 2026 EcoCampus · Tous droits réservés</span
+          ><span><a href="#">Aide</a> · <a href="#">Contact</a></span>
+        </footer>
+      </main>
+    </div>
+    <script src="../js/script.js"></script>
+  </body>
+</html>
