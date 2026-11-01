@@ -56,9 +56,7 @@ button {
   border-radius: 50%;
   bottom: -145px;
   left: -70px;
-  box-shadow:
-    0 0 0 18px #4bc6a311,
-    0 0 0 40px #4bc6a30b;
+  box-shadow: 0 0 0 18px #4bc6a311, 0 0 0 40px #4bc6a30b;
 }
 .brand {
   display: flex;
@@ -230,8 +228,7 @@ button {
   position: relative;
 }
 .hero {
-  background:
-    linear-gradient(100deg, #064c45ed, #0a7867e8 55%, #19a77fbb),
+  background: linear-gradient(100deg, #064c45ed, #0a7867e8 55%, #19a77fbb),
     url("https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=1500&q=80")
       center/cover;
   color: #fff;
@@ -1685,9 +1682,7 @@ th,
 }
 .toast.alert {
   border-left-color: var(--c-alert);
-  animation:
-    toastIn 0.35s ease,
-    pulse 1.2s 0.35s 2;
+  animation: toastIn 0.35s ease, pulse 1.2s 0.35s 2;
 }
 @keyframes toastIn {
   from {

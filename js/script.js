@@ -1040,166 +1040,6 @@ function setupPeriod(live, onChange) {
   };
 }
 
-/* Construit le document Word « apercu_data.docx » : résumé + un bloc par bâtiment.
-   D = bibliothèque docx ; rows = lignes de data.csv (tableaux de 6 champs). */
-function buildApercuDoc(D, rows, dateTxt) {
-  const {
-    Document,
-    Paragraph,
-    Table,
-    TableRow,
-    TableCell,
-    TextRun,
-    WidthType,
-    ShadingType,
-    HeadingLevel,
-  } = D;
-  const cell = (text, o = {}) =>
-    new TableCell({
-      width: { size: o.w || 20, type: WidthType.PERCENTAGE },
-      shading: o.fill
-        ? { type: ShadingType.CLEAR, color: "auto", fill: o.fill }
-        : undefined,
-      margins: { top: 70, bottom: 70, left: 110, right: 110 },
-      children: [
-        new Paragraph({
-          children: [
-            new TextRun({
-              text: String(text),
-              bold: !!o.bold,
-              color: o.color,
-              size: o.size || 19,
-            }),
-          ],
-        }),
-      ],
-    });
-  const groups = new Map();
-  rows.forEach((r) => {
-    if (!groups.has(r[1])) groups.set(r[1], []);
-    groups.get(r[1]).push(r);
-  });
-  const isAlert = (r) => +r[3] > +r[5];
-  const alertes = rows.filter(isAlert).length;
-  const kids = [
-    new Paragraph({
-      heading: HeadingLevel.HEADING_1,
-      children: [new TextRun({ text: "Aperçu de data.csv", color: "087C62" })],
-    }),
-    new Paragraph({
-      spacing: { after: 200 },
-      children: [
-        new TextRun({
-          text: "Exporté le " + dateTxt,
-          color: "5D777C",
-          size: 18,
-        }),
-      ],
-    }),
-    new Table({
-      width: { size: 100, type: WidthType.PERCENTAGE },
-      rows: [
-        new TableRow({
-          children: ["Mesures", "Alertes", "Bâtiments", "Fichier"].map((t) =>
-            cell(t, { w: 25, fill: "F0F8F5", color: "5D777C", size: 17 })
-          ),
-        }),
-        new TableRow({
-          children: [
-            cell(rows.length, { w: 25, bold: true, size: 30 }),
-            cell(alertes, {
-              w: 25,
-              bold: true,
-              size: 30,
-              color: alertes ? "DC2626" : "0A7F5A",
-            }),
-            cell(groups.size, { w: 25, bold: true, size: 30 }),
-            cell("data/data.csv", {
-              w: 25,
-              bold: true,
-              size: 22,
-              color: "0A7F5A",
-            }),
-          ],
-        }),
-      ],
-    }),
-    new Paragraph({
-      spacing: { before: 300, after: 100 },
-      children: [
-        new TextRun({
-          text: "DÉTAIL PAR BÂTIMENT",
-          bold: true,
-          color: "5D777C",
-          size: 18,
-        }),
-      ],
-    }),
-  ];
-  const W = [10, 22, 18, 30, 20];
-  groups.forEach((list, bat) => {
-    kids.push(
-      new Paragraph({
-        heading: HeadingLevel.HEADING_2,
-        spacing: { before: 280, after: 100 },
-        children: [
-          new TextRun({ text: `▦ ${bat}`, color: "123C43" }),
-          new TextRun({
-            text: `   ${list.length} mesure${list.length > 1 ? "s" : ""}`,
-            color: "759097",
-            size: 18,
-          }),
-        ],
-      }),
-      new Table({
-        width: { size: 100, type: WidthType.PERCENTAGE },
-        rows: [
-          new TableRow({
-            tableHeader: true,
-            children: ["ID", "Ressource", "Valeur", "Date/Heure", "Seuil"].map(
-              (t, i) =>
-                cell(t, {
-                  w: W[i],
-                  bold: true,
-                  fill: "E9F8F2",
-                  color: "17484E",
-                  size: 17,
-                })
-            ),
-          }),
-          ...list.map(
-            (r) =>
-              new TableRow({
-                children: [r[0], r[2], r[3], r[4], r[5]].map((t, i) =>
-                  cell(t, {
-                    w: W[i],
-                    fill: isAlert(r) ? "FDECEA" : undefined,
-                    color: isAlert(r) ? "B91C1C" : undefined,
-                  })
-                ),
-              })
-          ),
-        ],
-      })
-    );
-  });
-  return new Document({ sections: [{ children: kids }] });
-}
-
-/* bibliothèque « docx » chargée à la demande (génération du fichier Word dans le navigateur) */
-let docxReady = null;
-function loadDocx() {
-  if (window.docx) return Promise.resolve(true);
-  docxReady ||= new Promise((ok) => {
-    const sc = document.createElement("script");
-    sc.src = "https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.js";
-    sc.onload = () => ok(!!window.docx);
-    sc.onerror = () => ok(false);
-    document.head.append(sc);
-  });
-  return docxReady;
-}
-
 /* ---------- Pages ---------- */
 const pages = {
   dashboard() {
@@ -1672,46 +1512,62 @@ const pages = {
       render();
     });
 
-    /* Export : génère DEUX fichiers dans les Téléchargements, sans rien afficher sur le site :
-       1) data.csv          : mêmes données que data/data.csv (format du module C, toutes les mesures) ;
-       2) apercu_data.docx  : document Word en blocs (résumé + un bloc par bâtiment).
-       Le data.csv du dossier data est, lui, déjà mis à jour automatiquement à chaque changement. */
-    $("#exportBtn").addEventListener("click", async () => {
+    /* Export : télécharge un fichier INDÉPENDANT « apercu_data.csv » (rien n'est affiché sur le site).
+       Il contient la même présentation en blocs que l'aperçu : résumé, puis un bloc par bâtiment.
+       Séparateur « ; » + BOM : s'ouvre en colonnes dans Excel. Le data.csv du dossier data est,
+       lui, déjà mis à jour automatiquement à chaque changement. */
+    $("#exportBtn").addEventListener("click", () => {
       if (!state.mesures.length)
         return toast("Aucune mesure à exporter.", "alert");
       const { csv } = buildFiles();
-      saveBlob(csv, "data.csv", "text/csv;charset=utf-8");
-      if (!(await loadDocx())) {
-        return toast(
-          "data.csv exporté, mais apercu_data.docx impossible (connexion internet requise pour le générer).",
-          "alert"
-        );
-      }
       const rows = csv
         .trim()
         .split("\n")
         .slice(1)
         .filter(Boolean)
         .map((l) => l.split(","));
-      try {
-        const doc = buildApercuDoc(
-          window.docx,
-          rows,
-          new Date().toLocaleString("fr-FR")
+      const groups = new Map();
+      rows.forEach((r) => {
+        if (!groups.has(r[1])) groups.set(r[1], []);
+        groups.get(r[1]).push(r);
+      });
+      const alertes = rows.filter((r) => +r[3] > +r[5]).length;
+      const L = [
+        "APERÇU DE DATA.CSV",
+        "Exporté le;" + new Date().toLocaleString("fr-FR"),
+        "",
+        "RÉSUMÉ",
+        "Mesures;" + rows.length,
+        "Alertes;" + alertes,
+        "Bâtiments;" + groups.size,
+      ];
+      groups.forEach((list, bat) => {
+        L.push(
+          "",
+          `BÂTIMENT : ${bat} (${list.length} mesure${
+            list.length > 1 ? "s" : ""
+          })`
         );
-        const blob = await window.docx.Packer.toBlob(doc);
-        setTimeout(() => {
-          const url = URL.createObjectURL(blob);
-          Object.assign(document.createElement("a"), {
-            href: url,
-            download: "apercu_data.docx",
-          }).click();
-          URL.revokeObjectURL(url);
-        }, 400);
-        toast("Export réussi : data.csv et apercu_data.docx téléchargés.");
-      } catch (e) {
-        toast("data.csv exporté, erreur Word : " + e.message, "alert");
-      }
+        L.push("ID;Ressource;Valeur;Date/Heure;Seuil;Statut");
+        list.forEach((r) =>
+          L.push(
+            [
+              r[0],
+              r[2],
+              r[3],
+              r[4],
+              r[5],
+              +r[3] > +r[5] ? "Alerte" : "Normal",
+            ].join(";")
+          )
+        );
+      });
+      saveBlob(
+        "\ufeff" + L.join("\r\n") + "\r\n",
+        "apercu_data.csv",
+        "text/csv;charset=utf-8"
+      );
+      toast("Export réussi : apercu_data.csv téléchargé.");
     });
 
     $("#addRowBtn").addEventListener("click", async () => {
