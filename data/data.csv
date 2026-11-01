@@ -1,4 +1,4 @@
-id,batiment,ressource,valeur,date_heure,seuil#####
+id,batiment,ressource,valeur,date_heure,seuil
 1,Cours,electricite,1250.00,2026-10-07 08:15,2000.00
 2,Laboratoires,electricite,2580.00,2026-10-07 14:30,2000.00
 3,Bibliotheque,eau,320.00,2026-10-07 10:20,500.00
