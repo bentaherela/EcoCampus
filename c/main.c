@@ -9,6 +9,19 @@ static void viderBuffer(void)
     }
 }
 
+/* Ecrit data.csv puis regenere data.json : le site web lit data.json,
+   donc les deux fichiers doivent toujours etre a jour ensemble. */
+static void synchroniser(const Mesure mesures[], int nombre)
+{
+    if (!sauvegarderMesures("data/data.csv", mesures, nombre)) {
+        return;
+    }
+    printf("Sauvegarde reussie (data.csv).\n");
+    if (exporterJSON("data/data.json", mesures, nombre)) {
+        printf("data.json mis a jour : actualisez la page web (F5).\n");
+    }
+}
+
 /* Saisie d'une mesure au clavier. Retourne 1 si OK, 0 sinon */
 static int saisirMesure(Mesure *m)
 {
@@ -109,12 +122,8 @@ int main(void)
                 if (saisirMesure(&m)) {
                     if (ajouterMesure(mesures, &nombre, MAX_MESURES, m)) {
                         printf("\nMesure ajoutee. Total : %d\n", nombre);
-                        /* sauvegarde immediate dans le CSV : l'ajout
-                           survivra a la fermeture du programme */
-                        if (sauvegarderMesures("data/data.csv", mesures, nombre)) {
-                            printf("Sauvegarde reussie.\n");
-                        }
-                        
+                        /* sauvegarde immediate : CSV + JSON (pour le site web) */
+                        synchroniser(mesures, nombre);
                     } else {
                         printf("\nErreur : tableau plein.\n");
                     }
@@ -160,11 +169,8 @@ int main(void)
                 }
                 if (supprimerMesure(mesures, &nombre, id)) {
                     printf("Mesure supprimee. Total : %d\n", nombre);
-                    /* sauvegarde immediate dans le CSV : la suppression10
-                           survivra a la fermeture du programme */
-                    if (sauvegarderMesures("data/data.csv", mesures, nombre)) {
-                        printf("Sauvegarde reussie.\n");
-                    }
+                    /* sauvegarde immediate : CSV + JSON (pour le site web) */
+                    synchroniser(mesures, nombre);
                 } else {
                     printf("ID introuvable.\n");
                 }
