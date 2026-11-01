@@ -1,5 +1,7 @@
 /* EcoCampus — Module Web (Module B)
-   Lit data/data.json (produit par le module C), puis construit tableaux, KPI et graphiques. */
+   Lit data/data.json (produit par le module C), puis construit tableaux, KPI et graphiques.
+   Chrome / Edge : après avoir connecté le dossier « data » (une seule fois), chaque ajout, modification
+   ou suppression réécrit data/data.json ET data/data.csv dans EXACTEMENT le même format que le module C. */
 
 /* ---------- Adaptation au fichier du module C ---------- */
 const DATA_URL = new URL("../data/data.json", document.currentScript.src).href;
@@ -16,7 +18,7 @@ const getAuth = () => {
     return JSON.parse(
       sessionStorage.getItem(AUTH_KEY) ||
         localStorage.getItem(AUTH_KEY) ||
-        "null"
+        "null",
     );
   } catch {
     return null;
@@ -28,7 +30,7 @@ async function sha(s) {
   try {
     const b = await crypto.subtle.digest(
       "SHA-256",
-      new TextEncoder().encode(s)
+      new TextEncoder().encode(s),
     );
     return [...new Uint8Array(b)]
       .map((x) => x.toString(16).padStart(2, "0"))
@@ -84,7 +86,7 @@ async function changePassword(u, p) {
 function startSession(u, remember) {
   (remember ? localStorage : sessionStorage).setItem(
     AUTH_KEY,
-    JSON.stringify({ u, t: Date.now() })
+    JSON.stringify({ u, t: Date.now() }),
   );
   location.replace(HOME_URL);
 }
@@ -110,7 +112,7 @@ function initLogin() {
     b.addEventListener("click", () => {
       const i = b.previousElementSibling;
       i.type = i.type === "password" ? "text" : "password";
-    })
+    }),
   );
   const fail = (form, el, msg) => {
     el.textContent = msg;
@@ -130,7 +132,7 @@ function initLogin() {
       return fail(
         fIn,
         err,
-        "Entrez votre nom d'utilisateur et votre mot de passe."
+        "Entrez votre nom d'utilisateur et votre mot de passe.",
       );
     if (await checkLogin(u, p))
       startSession(u.trim().toLowerCase(), $("#loginRemember").checked);
@@ -154,6 +156,7 @@ function initLogin() {
   });
 }
 
+/* Noms du module C  <->  noms affichés sur le site */
 const NORM_RES = {
   electricite: "Électricité",
   eau: "Eau",
@@ -164,6 +167,16 @@ const NORM_BAT = {
   Bibliotheque: "Bibliothèque",
   Residence: "Résidence",
 };
+const TO_C_BAT = {
+  "Cours A": "Cours",
+  Bibliothèque: "Bibliotheque",
+  Résidence: "Residence",
+};
+const TO_C_RES = {
+  Électricité: "electricite",
+  Eau: "eau",
+  Chauffage: "chauffage",
+};
 const TYPES = {
   "Cours A": "Enseignement",
   Laboratoires: "Enseignement",
@@ -171,6 +184,17 @@ const TYPES = {
   Résidence: "Résidence",
   Administration: "Administration",
 };
+/* Signature des données : change dès que le contenu de data.json change.
+   Sert à savoir si le navigateur garde une ancienne copie (localStorage). */
+function signature(mesures) {
+  const s = JSON.stringify(mesures);
+  let h = 5381;
+  for (let i = 0; i < s.length; i++) {
+    h = ((h << 5) + h + s.charCodeAt(i)) | 0; // hash « djb2 »
+  }
+  return mesures.length + "-" + (h >>> 0).toString(36);
+}
+
 function adapt(data) {
   const mesures = data.mesures.map((m) => ({
     ...m,
@@ -179,13 +203,19 @@ function adapt(data) {
     date: String(m.date_heure || m.date || "").replace(" ", "T"),
   }));
   const noms = [...new Set(mesures.map((m) => m.batiment))];
+  /* les noms de bâtiments du fichier sont ceux du module C : on les convertit aussi */
+  const batiments = Array.isArray(data.batiments)
+    ? data.batiments.map((b) => {
+        const nom = NORM_BAT[b.nom] || b.nom;
+        return { ...b, nom, type: b.type || TYPES[nom] || "" };
+      })
+    : noms.map((nom) => ({ nom, type: TYPES[nom] || "" }));
   return {
     ...data,
     mesures,
-    batiments:
-      data.batiments || noms.map((nom) => ({ nom, type: TYPES[nom] || "" })),
+    batiments,
     precedent: data.precedent || {},
-    genere_le: data.genere_le || "",
+    genere_le: data.genere_le || signature(data.mesures),
   };
 }
 
@@ -207,7 +237,7 @@ const readList = (k) => {
   }
 };
 
-/* ---------- Enregistrement dans data.json + data.csv (JS pur) ----------
+/* ---------- Enregistrement dans data.json + data.csv ----------
    Chrome / Edge : l'utilisateur choisit une fois le dossier « data » (File System Access API),
    puis chaque changement réécrit data.json et data.csv (même format que le module C).
    Sinon : repli sur le localStorage + bouton de téléchargement. */
@@ -251,24 +281,17 @@ async function detectDir() {
   } catch {}
 }
 
-const TO_C_BAT = {
-  "Cours A": "Cours",
-  Bibliothèque: "Bibliotheque",
-  Résidence: "Residence",
-};
-const TO_C_RES = {
-  Électricité: "electricite",
-  Eau: "eau",
-  Chauffage: "chauffage",
-};
 const cleanName = (s) =>
   String(s)
     .replace(/[,\r\n"]/g, " ")
     .trim();
 const r2 = (n) => Math.round(n * 100) / 100;
-function buildFiles() {
+
+/* Construit data.json et data.csv dans le MÊME format que le module C (exporterJSON / sauvegarderMesures).
+   `list` = mesures à écrire (par défaut toutes ; l'export filtré en passe une partie). */
+function buildFiles(list = state.mesures) {
   const FEN = 2; // = FENETRE_MOBILE du module C
-  const mesures = state.mesures.map((m) => {
+  const mesures = list.map((m) => {
     const seuil = Number.isFinite(m.seuil) ? m.seuil : 0;
     return {
       id: m.id,
@@ -316,8 +339,8 @@ function buildFiles() {
         derniere - premiere > marge
           ? "hausse"
           : derniere - premiere < -marge
-          ? "baisse"
-          : "stable";
+            ? "baisse"
+            : "stable";
     }
     return {
       batiment: s[0].batiment,
@@ -334,34 +357,96 @@ function buildFiles() {
       })),
     };
   });
-  const json = {
-    resume: {
-      nb_mesures: mesures.length,
-      nb_alertes: mesures.filter((m) => m.alerte).length,
-      nb_groupes: groups.length,
-    },
-    batiments: state.batiments.map((b) => ({
-      nom: cleanName(b.nom),
-      type: b.type || "",
-      etages: b.etages,
-      surface: b.surface,
-    })),
-    mesures,
-    statistiques,
-    tendances,
-  };
+
+  /* ---- écriture du JSON avec la mise en page exacte du module C ---- */
+  const S = JSON.stringify;
+  const f = (n) => Number(n).toFixed(2);
+  const nf = (n) => (n == null ? "null" : f(n));
+  const ni = (n) => (Number.isFinite(n) ? String(n) : "null");
+  const block = (name, items, last) => [
+    `  "${name}": [`,
+    ...items.map((x, i) => "    " + x + (i < items.length - 1 ? "," : "")),
+    "  ]" + (last ? "" : ","),
+  ];
+  const nbAlertes = mesures.filter((m) => m.alerte).length;
+  const lines = [
+    "{",
+    '  "resume": {',
+    `    "nb_mesures": ${mesures.length},`,
+    `    "nb_alertes": ${nbAlertes},`,
+    `    "nb_groupes": ${groups.length}`,
+    "  },",
+    ...block(
+      "batiments",
+      state.batiments.map(
+        (b) =>
+          `{"nom": ${S(cleanName(TO_C_BAT[b.nom] || b.nom))}, "type": ${S(
+            b.type || ""
+          )}, "etages": ${ni(b.etages)}, "surface": ${ni(b.surface)}}`
+      )
+    ),
+    ...block(
+      "mesures",
+      mesures.map(
+        (m) =>
+          `{"id": ${m.id}, "batiment": ${S(m.batiment)}, "ressource": ${S(
+            m.ressource
+          )}, "valeur": ${f(m.valeur)}, "date_heure": ${S(
+            m.date_heure
+          )}, "seuil": ${f(m.seuil)}, "alerte": ${m.alerte}}`
+      )
+    ),
+    ...block(
+      "statistiques",
+      statistiques.map(
+        (s) =>
+          `{"batiment": ${S(s.batiment)}, "ressource": ${S(
+            s.ressource
+          )}, "nb_mesures": ${s.nb_mesures}, "total": ${f(
+            s.total
+          )}, "moyenne": ${f(s.moyenne)}, "min": ${f(s.min)}, "max": ${f(
+            s.max
+          )}, "nb_alertes": ${s.nb_alertes}}`
+      )
+    ),
+    ...block(
+      "tendances",
+      tendances.map(
+        (t) =>
+          `{"batiment": ${S(t.batiment)}, "ressource": ${S(
+            t.ressource
+          )}, "fenetre": ${t.fenetre}, "nb_mesures": ${
+            t.nb_mesures
+          }, "tendance": ${S(t.tendance)}, "premiere_moyenne": ${nf(
+            t.premiere_moyenne
+          )}, "derniere_moyenne": ${nf(
+            t.derniere_moyenne
+          )}, "points": [${t.points
+            .map(
+              (p) =>
+                `{"date_heure": ${S(p.date_heure)}, "valeur": ${f(
+                  p.valeur
+                )}, "moyenne_mobile": ${nf(p.moyenne_mobile)}}`
+            )
+            .join(", ")}]}`
+      ),
+      true
+    ),
+    "}",
+  ];
+  const json = lines.join("\n") + "\n";
   const csv =
     "id,batiment,ressource,valeur,date_heure,seuil\n" +
     mesures
       .map(
         (m) =>
-          `${m.id},${m.batiment},${m.ressource},${m.valeur.toFixed(2)},${
+          `${m.id},${m.batiment},${m.ressource},${f(m.valeur)},${
             m.date_heure
-          },${m.seuil.toFixed(2)}`
+          },${f(m.seuil)}`
       )
       .join("\n") +
-    "\n";
-  return { json: JSON.stringify(json, null, 2) + "\n", csv };
+    (mesures.length ? "\n" : "");
+  return { json, csv };
 }
 async function writeFiles(dir) {
   const { json, csv } = buildFiles();
@@ -376,25 +461,64 @@ async function writeFiles(dir) {
     await w.close();
   }
 }
+function saveBlob(text, name, type) {
+  const url = URL.createObjectURL(new Blob([text], { type }));
+  Object.assign(document.createElement("a"), {
+    href: url,
+    download: name,
+  }).click();
+  URL.revokeObjectURL(url);
+}
 function downloadFiles() {
   const { json, csv } = buildFiles();
   [
-    ["data.json", json, "application/json"],
-    ["data.csv", csv, "text/csv"],
-  ].forEach(([n, t, ty], i) =>
-    setTimeout(() => {
-      const url = URL.createObjectURL(
-        new Blob([t], { type: ty + ";charset=utf-8" })
-      );
-      Object.assign(document.createElement("a"), {
-        href: url,
-        download: n,
-      }).click();
-      URL.revokeObjectURL(url);
-    }, i * 400)
-  );
+    ["data.json", json, "application/json;charset=utf-8"],
+    ["data.csv", csv, "text/csv;charset=utf-8"],
+  ].forEach(([n, t, ty], i) => setTimeout(() => saveBlob(t, n, ty), i * 400));
+}
+/* Demande à l'utilisateur de choisir (ou de réautoriser) le dossier « data ». Doit suivre un clic. */
+async function connectDir() {
+  try {
+    let h = DIR_HANDLE;
+    if (h && DIR_STATE === "prompt") {
+      if ((await h.requestPermission({ mode: "readwrite" })) !== "granted")
+        return false;
+    } else {
+      h = await window.showDirectoryPicker({ mode: "readwrite" });
+      if (h.name !== "data") {
+        /* l'utilisateur a choisi la racine du projet : on descend dans « data » */
+        try {
+          h = await h.getDirectoryHandle("data");
+        } catch {
+          toast("Choisissez le dossier « data » de votre projet.", "alert");
+          return false;
+        }
+      }
+      await idbSet("dir", h);
+    }
+    DIR_HANDLE = h;
+    DIR_STATE = "ok";
+    SERVER = true;
+    [KEY, BKEY, DKEY].forEach((k) => localStorage.removeItem(k));
+    return true;
+  } catch {
+    return false;
+  }
 }
 async function persist() {
+  /* La fenêtre de choix du dossier ne s'ouvre qu'UNE SEULE FOIS par session d'onglet
+     (jamais à chaque ajout). Ensuite : bouton « Connecter le dossier data » sur la page Données. */
+  if (!SERVER && (DIR_STATE === "none" || DIR_STATE === "prompt")) {
+    let asked = false;
+    try {
+      asked = !!sessionStorage.getItem("ecocampus-asked");
+      sessionStorage.setItem("ecocampus-asked", "1");
+    } catch {}
+    if (!asked) {
+      toast("Sélectionnez le dossier « data » (une seule fois).");
+      await connectDir();
+    }
+  }
   if (SERVER) {
     try {
       await writeFiles(DIR_HANDLE);
@@ -407,7 +531,7 @@ async function persist() {
   try {
     localStorage.setItem(
       KEY,
-      JSON.stringify({ v: state.generated, m: state.mesures })
+      JSON.stringify({ v: state.generated, m: state.mesures }),
     );
   } catch {}
   return true;
@@ -423,9 +547,9 @@ const esc = (s) =>
   String(s).replace(
     /[&<>"']/g,
     (c) =>
-      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[
+      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[
         c
-      ])
+      ],
   );
 
 /* ---------- Réglages ---------- */
@@ -540,7 +664,7 @@ function ask({ title, text = "", fields = [], ok = "Valider" }) {
                 }" value="${esc(f.value ?? "")}" ${
                   f.type === "number" ? `step="any" min="${f.min ?? 0}"` : ""
                 } ${f.required === false ? "" : "required"}>`
-          }</label>`
+          }</label>`,
       )
       .join("")}
       <div class="modal-actions"><button type="button" class="btn btn-outline" data-x>Annuler</button>
@@ -550,7 +674,7 @@ function ask({ title, text = "", fields = [], ok = "Valider" }) {
     $("[data-x]", d).onclick = () => d.close("cancel");
     d.addEventListener("close", () => {
       res(
-        d.returnValue === "ok" ? Object.fromEntries(new FormData(form)) : null
+        d.returnValue === "ok" ? Object.fromEntries(new FormData(form)) : null,
       );
       d.remove();
     });
@@ -620,10 +744,15 @@ function clean(data) {
   const del = SERVER ? [] : readList(DKEY);
   state.batiments = state.batiments.filter((b) => !del.includes(b.nom));
   state.mesures = state.mesures.filter((m) => !del.includes(m.batiment));
+  /* bâtiments présents dans les mesures mais absents de la liste */
+  state.mesures.forEach((m) => {
+    if (!state.batiments.some((b) => b.nom === m.batiment))
+      state.batiments.push({ nom: m.batiment, type: TYPES[m.batiment] || "" });
+  });
   if (rejected)
     toast(
       `${rejected} mesure(s) invalide(s) ignorée(s) dans data.json.`,
-      "alert"
+      "alert",
     );
 }
 
@@ -631,7 +760,7 @@ function clean(data) {
 function totalPrev(res, bats) {
   return (bats || Object.keys(state.precedent)).reduce(
     (a, b) => a + (state.precedent[b]?.[res] || 0),
-    0
+    0,
   );
 }
 function setTrend(el, now, prev, short) {
@@ -651,7 +780,7 @@ function kpi(sel, res, bats) {
   const card = $(sel);
   if (!card) return;
   const list = ofRes(state.mesures, res).filter(
-    (m) => !bats || bats.includes(m.batiment)
+    (m) => !bats || bats.includes(m.batiment),
   );
   $("strong", card).innerHTML = `${fmt(sum(list))} <small>${
     RES[res].unit
@@ -699,7 +828,7 @@ function lineCfg(list) {
   const datasets = Object.keys(RES).map((r) => ({
     label: r,
     data: days.map((d) =>
-      sum(ofRes(list, r).filter((m) => m.date.startsWith(d)))
+      sum(ofRes(list, r).filter((m) => m.date.startsWith(d))),
     ),
     borderColor: cssVar(RES[r].css),
     backgroundColor: cssVar(RES[r].css),
@@ -742,7 +871,7 @@ function setDonut(el, vals) {
   el.style.background = `conic-gradient(${parts.join(",")})`;
   const legend = $$(".legend-list b", el.closest(".donut-area"));
   vals.forEach(
-    (v, i) => (legend[i].textContent = Math.round((v / total) * 100) + "%")
+    (v, i) => (legend[i].textContent = Math.round((v / total) * 100) + "%"),
   );
 }
 
@@ -837,18 +966,18 @@ function setupPeriod(live, onChange) {
       preset !== "custom"
         ? PERIOD_NAMES[preset]
         : a && b
-        ? `${short(a)} → ${short(b)}`
-        : a
-        ? `Depuis le ${short(a)}`
-        : b
-        ? `Jusqu'au ${short(b)}`
-        : PERIOD_NAMES.all;
+          ? `${short(a)} → ${short(b)}`
+          : a
+            ? `Depuis le ${short(a)}`
+            : b
+              ? `Jusqu'au ${short(b)}`
+              : PERIOD_NAMES.all;
     btn.classList.toggle(
       "on",
-      preset !== "all" && (preset !== "custom" || !!(a || b))
+      preset !== "all" && (preset !== "custom" || !!(a || b)),
     );
     $$(".period-chips button", pop).forEach((c) =>
-      c.classList.toggle("active", c.dataset.p === preset)
+      c.classList.toggle("active", c.dataset.p === preset),
     );
   };
   const close = () => {
@@ -881,13 +1010,13 @@ function setupPeriod(live, onChange) {
       [fr.value, to.value] = presetRange(preset);
       close();
       commit();
-    })
+    }),
   );
   [fr, to].forEach((i) =>
     i.addEventListener("change", () => {
       preset = "custom";
       commit();
-    })
+    }),
   );
   const tick = () => {
     $("#pToday").textContent =
@@ -946,10 +1075,10 @@ const pages = {
           .map(
             (m) =>
               `<div class="alert-item"><span class="alert-symbol">!</span><div><b>${esc(
-                m.batiment
+                m.batiment,
               )} — ${esc(m.ressource)} : ${fmt(m.valeur)} ${m.unite}${seuilTxt(
-                m
-              )}</b><small>${fmtDate(m.date)}</small></div></div>`
+                m,
+              )}</b><small>${fmtDate(m.date)}</small></div></div>`,
           )
           .join("")
       : '<p class="muted">Aucune alerte : tout est sous les seuils.</p>';
@@ -966,25 +1095,38 @@ const pages = {
     if (rawQ) {
       const q = norm(rawQ);
       state.mesures = state.mesures.filter(
-        (m) => norm(m.batiment).includes(q) || norm(m.ressource).includes(q)
+        (m) => norm(m.batiment).includes(q) || norm(m.ressource).includes(q),
       );
       $(".page-title").insertAdjacentHTML(
         "afterend",
         `<div class="notice">Filtre actif : <b>« ${esc(rawQ)} »</b> — ${
           state.mesures.length
-        } mesure(s). <a href="graphique.html" class="text-link">✕ Effacer le filtre</a></div>`
+        } mesure(s). <a href="graphique.html" class="text-link">✕ Effacer le filtre</a></div>`,
       );
     }
     per.info(state.mesures.length);
     const vals = Object.keys(RES).map((r) => sum(ofRes(state.mesures, r)));
     const [d1, d2] = $$(".donut");
-    setDonut(d1, vals);
-    $("strong", d1).textContent = fmt(vals.reduce((a, b) => a + b, 0));
-    $("small", d1).textContent = "kWh + m³";
+    /* Donut en kWh uniquement : l'eau (m³) n'est pas additionnée aux kWh.
+       Son total est affiché à part dans la légende. */
+    const names = Object.keys(RES);
+    const valsKwh = names.map((r, i) => (RES[r].unit === "kWh" ? vals[i] : 0));
+    setDonut(d1, valsKwh);
+    $("strong", d1).textContent = fmt(valsKwh.reduce((a, b) => a + b, 0));
+    $("small", d1).textContent = "kWh";
+    const iEau = names.findIndex((r) => RES[r].unit === "m³");
+    $$(".legend-list b", d1.closest(".donut-area"))[iEau].textContent =
+      fmt(vals[iEau]) + " m³";
+    const sub = $$(".panel").find((p) =>
+      $("h2", p)?.textContent.includes("par ressource"),
+    );
+    if (sub)
+      $("p", sub).textContent =
+        "Électricité et chauffage en kWh · eau en m³ à part";
     const al = state.mesures.filter((m) => m.alerte);
     setDonut(
       d2,
-      Object.keys(RES).map((r) => ofRes(al, r).length)
+      Object.keys(RES).map((r) => ofRes(al, r).length),
     );
     $("strong", d2).textContent = al.length;
 
@@ -992,7 +1134,7 @@ const pages = {
       .filter((b) => !rawQ || byBat(b.nom).length)
       .map((b) => b.nom);
     const subtitle = $$(".panel").find((p) =>
-      $("h2", p)?.textContent.includes("par bâtiment")
+      $("h2", p)?.textContent.includes("par bâtiment"),
     );
     if (subtitle)
       $("p", subtitle).textContent =
@@ -1008,7 +1150,7 @@ const pages = {
       t.addEventListener("click", () => {
         const v = views[t.textContent.trim()] || views["Vue globale"];
         panels.forEach((p, i) => (p.hidden = !v.includes(i)));
-      })
+      }),
     );
     swapForCanvas(".bar-chart", "chartBars");
     mkChart("chartBars", () => {
@@ -1062,7 +1204,7 @@ const pages = {
         ([b, v]) =>
           `<div><span>${esc(b)}</span><i><b style="width:${
             (v / top) * 100
-          }%"></b></i><strong>${fmt(v)}</strong></div>`
+          }%"></b></i><strong>${fmt(v)}</strong></div>`,
       )
       .join("");
 
@@ -1079,7 +1221,7 @@ const pages = {
       $(".trend-panel > p").innerHTML = `La consommation est en ${
         pct <= 0 ? "baisse" : "hausse"
       } de <b>${Math.abs(pct).toFixed(
-        0
+        0,
       )}%</b> par rapport à la période précédente.`;
       st.className = "status " + (pct <= 0 ? "normal" : "warning");
       st.textContent =
@@ -1107,13 +1249,13 @@ const pages = {
       $(".total-card").insertAdjacentHTML(
         "beforebegin",
         `<article class="building-card"><div class="building-photo photo-five"><span>${esc(
-          b.type.toUpperCase()
+          (b.type || "").toUpperCase()
         )}</span></div><div class="building-info"><h2>▦ ${esc(
-          b.nom
+          b.nom,
         )}</h2><div class="building-value">0 <small>kWh</small><span></span></div><div class="mini-progress"><i style="width:0%"></i></div><a href="detail.html?b=${encodeURIComponent(
-          b.nom
-        )}" class="text-link">Détails →</a></div></article>`
-      )
+          b.nom,
+        )}" class="text-link">Détails →</a></div></article>`,
+      ),
     );
 
     const elec = (n) => sum(ofRes(byBat(n), "Électricité"));
@@ -1129,16 +1271,16 @@ const pages = {
       if (!$(".del-bat", card))
         $(".building-info", card).insertAdjacentHTML(
           "beforeend",
-          '<button type="button" class="del-bat" title="Supprimer ce bâtiment">🗑 Supprimer</button>'
+          '<button type="button" class="del-bat" title="Supprimer ce bâtiment">🗑 Supprimer</button>',
         );
       $(".building-value", card).innerHTML = `${fmt(
-        elec(name)
+        elec(name),
       )} <small>kWh</small><span></span>`;
       setTrend(
         $(".building-value span", card),
         elec(name),
         totalPrev("Électricité", [name]),
-        true
+        true,
       );
       $(".mini-progress i", card).style.width = (elec(name) / max) * 100 + "%";
       $("a.text-link", card).href = "detail.html?b=" + encodeURIComponent(name);
@@ -1161,23 +1303,28 @@ const pages = {
         }))
       )
         return;
+      const backupM = state.mesures,
+        backupB = state.batiments;
       state.mesures = state.mesures.filter((m) => m.batiment !== name);
-      if (SERVER) {
-        state.batiments = state.batiments.filter((b) => b.nom !== name);
-      } else {
+      state.batiments = state.batiments.filter((b) => b.nom !== name);
+      if (!(await persist())) {
+        state.mesures = backupM; // échec : on annule
+        state.batiments = backupB;
+        return;
+      }
+      if (!SERVER) {
         const del = readList(DKEY);
         if (!del.includes(name)) del.push(name);
         localStorage.setItem(DKEY, JSON.stringify(del));
         localStorage.setItem(
           BKEY,
-          JSON.stringify(readList(BKEY).filter((x) => x.nom !== name))
+          JSON.stringify(readList(BKEY).filter((x) => x.nom !== name)),
         );
       }
-      if (!(await persist())) return;
       toast(
         SERVER
           ? "Bâtiment supprimé (data.json et data.csv mis à jour)."
-          : "Bâtiment supprimé."
+          : "Bâtiment supprimé.",
       );
       setTimeout(() => location.reload(), 600);
     });
@@ -1187,7 +1334,7 @@ const pages = {
     const topIn = $(".topbar .search input");
     $("#buildingGrid").insertAdjacentHTML(
       "afterend",
-      '<p class="muted" id="noBat" hidden>Aucun bâtiment trouvé.</p>'
+      '<p class="muted" id="noBat" hidden>Aucun bâtiment trouvé.</p>',
     );
     const apply = () => {
       const q = norm(search.value || topIn.value);
@@ -1262,21 +1409,21 @@ const pages = {
             per.inRange(m) &&
             (!F.q ||
               norm(`${m.id} ${m.batiment} ${m.ressource} ${m.valeur}`).includes(
-                F.q
-              ))
+                F.q,
+              )),
         )
         .sort((a, b) => b.date.localeCompare(a.date) || b.id - a.id);
 
     const row = (m) => {
       const r = RES[m.ressource];
       return `<tr class="${m.alerte ? "row-alert" : ""}"><td>${String(
-        m.id
+        m.id,
       ).padStart(3, "0")}</td><td>${esc(
-        m.batiment
+        m.batiment,
       )}</td><td><span class="resource-label ${r.cls}">${r.icon} ${
         m.ressource
       }</span></td><td>${fmt(m.valeur)}</td><td>${m.unite}</td><td>${fmtDate(
-        m.date
+        m.date,
       )}</td><td><span class="status ${m.alerte ? "warning" : "normal"}">${
         m.alerte ? "Alerte" : "Normal"
       }</span></td><td><button class="row-action" data-act="edit" data-id="${
@@ -1310,7 +1457,7 @@ const pages = {
           (_, i) =>
             `<button data-p="${i + 1}" class="${
               i + 1 === F.page ? "selected" : ""
-            }">${i + 1}</button>`
+            }">${i + 1}</button>`,
         ).join("") +
         `<button data-p="${F.page + 1}" ${
           F.page === pages ? "disabled" : ""
@@ -1323,13 +1470,13 @@ const pages = {
       F.q = norm((textSearch.value || topSearch.value).trim());
       F.page = 1;
       $$(".resource-tabs [data-resource]").forEach((t) =>
-        t.classList.toggle("active", t.dataset.resource === F.r)
+        t.classList.toggle("active", t.dataset.resource === F.r),
       );
       render();
     };
 
     ["#buildingFilter", "#resourceFilter"].forEach((s) =>
-      $(s).addEventListener("change", sync)
+      $(s).addEventListener("change", sync),
     );
     textSearch.addEventListener("input", sync);
     topSearch.addEventListener("input", sync);
@@ -1341,7 +1488,7 @@ const pages = {
       t.addEventListener("click", () => {
         $("#resourceFilter").value = t.dataset.resource;
         sync();
-      })
+      }),
     );
     $(".pagination").addEventListener("click", (e) => {
       const b = e.target.closest("button[data-p]");
@@ -1350,10 +1497,13 @@ const pages = {
       render();
     });
 
+    /* modification / suppression : on met à jour l'écran PUIS data.json + data.csv ;
+       si l'écriture échoue, on annule le changement. */
     $("#measureTable tbody").addEventListener("click", async (e) => {
       const btn = e.target.closest("[data-act]");
       const m = btn && state.mesures.find((x) => x.id === +btn.dataset.id);
       if (!m) return;
+      const backup = state.mesures.map((x) => ({ ...x }));
       if (btn.dataset.act === "del") {
         if (
           !(await ask({
@@ -1381,42 +1531,67 @@ const pages = {
         m.valeur = +r.valeur;
         m.alerte = Number.isFinite(m.seuil) && m.valeur > m.seuil;
       }
-      persist();
+      if (!(await persist())) state.mesures = backup;
+      else if (SERVER) toast("data.json et data.csv mis à jour.");
       render();
     });
 
+    /* Export : télécharge un fichier INDÉPENDANT « apercu_data.csv » (rien n'est affiché sur le site).
+       Il contient la même présentation en blocs que l'aperçu : résumé, puis un bloc par bâtiment.
+       Séparateur « ; » + BOM : s'ouvre en colonnes dans Excel. Le data.csv du dossier data est,
+       lui, déjà mis à jour automatiquement à chaque changement. */
     $("#exportBtn").addEventListener("click", () => {
-      const rows = filtered().map((m) => ({
-        ID: m.id,
-        Bâtiment: m.batiment,
-        Ressource: m.ressource,
-        Valeur: m.valeur,
-        Unité: m.unite,
-        "Date/Heure": fmtDate(m.date),
-        Statut: m.alerte ? "Alerte" : "Normal",
-      }));
-      let blob, name;
-      if (SET.format === "JSON") {
-        blob = new Blob([JSON.stringify(rows, null, 2)], {
-          type: "application/json",
-        });
-        name = "ecocampus-mesures.json";
-      } else {
-        const sep = SET.format === "Excel" ? ";" : ",";
-        const csv = [Object.keys(rows[0] || {}), ...rows.map(Object.values)]
-          .map((r) =>
-            r.map((c) => `"${String(c).replaceAll('"', '""')}"`).join(sep)
+      if (!state.mesures.length)
+        return toast("Aucune mesure à exporter.", "alert");
+      const { csv } = buildFiles();
+      const rows = csv
+        .trim()
+        .split("\n")
+        .slice(1)
+        .filter(Boolean)
+        .map((l) => l.split(","));
+      const groups = new Map();
+      rows.forEach((r) => {
+        if (!groups.has(r[1])) groups.set(r[1], []);
+        groups.get(r[1]).push(r);
+      });
+      const alertes = rows.filter((r) => +r[3] > +r[5]).length;
+      const L = [
+        "APERÇU DE DATA.CSV",
+        "Exporté le;" + new Date().toLocaleString("fr-FR"),
+        "",
+        "RÉSUMÉ",
+        "Mesures;" + rows.length,
+        "Alertes;" + alertes,
+        "Bâtiments;" + groups.size,
+      ];
+      groups.forEach((list, bat) => {
+        L.push(
+          "",
+          `BÂTIMENT : ${bat} (${list.length} mesure${
+            list.length > 1 ? "s" : ""
+          })`
+        );
+        L.push("ID;Ressource;Valeur;Date/Heure;Seuil;Statut");
+        list.forEach((r) =>
+          L.push(
+            [
+              r[0],
+              r[2],
+              r[3],
+              r[4],
+              r[5],
+              +r[3] > +r[5] ? "Alerte" : "Normal",
+            ].join(";")
           )
-          .join("\n");
-        blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8;" });
-        name = "ecocampus-mesures.csv";
-      }
-      const url = URL.createObjectURL(blob);
-      Object.assign(document.createElement("a"), {
-        href: url,
-        download: name,
-      }).click();
-      URL.revokeObjectURL(url);
+        );
+      });
+      saveBlob(
+        "\ufeff" + L.join("\r\n") + "\r\n",
+        "apercu_data.csv",
+        "text/csv;charset=utf-8"
+      );
+      toast("Export réussi : apercu_data.csv téléchargé.");
     });
 
     $("#addRowBtn").addEventListener("click", async () => {
@@ -1442,7 +1617,7 @@ const pages = {
       const { bat, res } = r,
         valeur = +r.valeur;
       const ref = state.mesures.find(
-        (m) => m.batiment === bat && m.ressource === res
+        (m) => m.batiment === bat && m.ressource === res,
       );
       const now = new Date();
       const m = {
@@ -1458,7 +1633,10 @@ const pages = {
       };
       m.alerte = valeur > m.seuil;
       state.mesures.push(m);
-      persist();
+      if (!(await persist())) {
+        state.mesures = state.mesures.filter((x) => x !== m); // annulé
+        return render();
+      }
       F.page = 1;
       render();
       if (m.alerte && SET.notif_alerte)
@@ -1466,9 +1644,15 @@ const pages = {
           `Nouvelle anomalie : ${bat} — ${res} ${fmt(valeur)} ${
             m.unite
           }${seuilTxt(m)}`,
-          "alert"
+          "alert",
         );
-      else if (SET.notif_ajout) toast("Mesure ajoutée.");
+      else if (SET.notif_ajout)
+        toast(
+          SERVER
+            ? "Mesure ajoutée (data.json et data.csv mis à jour)."
+            : "Mesure ajoutée dans le navigateur seulement : data.json n'a PAS été modifié (dossier data non connecté).",
+          SERVER ? "ok" : "alert"
+        );
     });
 
     const badge = $(".small-badge");
@@ -1483,45 +1667,25 @@ const pages = {
       ok: " <b>Fichiers connectés :</b> data.json et data.csv sont mis à jour automatiquement.",
       prompt:
         ' <b>Dossier data déconnecté.</b> <a href="#" id="dirBtn" class="text-link">🔓 Réautoriser l\'écriture</a>',
-      none: ' <b>Modifications gardées dans ce navigateur.</b> <a href="#" id="dirBtn" class="text-link">📁 Connecter le dossier data</a>',
+      none: ' <b>Dossier data non connecté :</b> les changements restent dans ce navigateur. <a href="#" id="dirBtn" class="text-link">📁 Connecter le dossier data</a>',
       unsupported:
-        " <b>Modifications gardées dans ce navigateur</b> (écriture directe : Chrome ou Edge requis).",
+        " <b>Modifications gardées dans ce navigateur</b> (écriture directe dans data.json : Chrome ou Edge requis). Utilisez le bouton de téléchargement.",
     }[DIR_STATE];
-    $(".notice").insertAdjacentHTML(
-      "beforeend",
-      links +
-        ' <a href="#" id="dlBtn" class="text-link">⇩ Télécharger data.json + data.csv</a>' +
-        (SERVER
-          ? ""
-          : ' <a href="#" id="resetBtn" class="text-link">↺ Réinitialiser</a>')
-    );
-    $("#dlBtn").addEventListener("click", (e) => {
-      e.preventDefault();
-      downloadFiles();
-    });
+    if (!SERVER)
+      $(".notice").insertAdjacentHTML(
+        "beforeend",
+        links +
+          ' <a href="#" id="resetBtn" class="text-link">↺ Réinitialiser</a>'
+      );
     $("#dirBtn")?.addEventListener("click", async (e) => {
       e.preventDefault();
+      if (!(await connectDir())) return;
       try {
-        let h = DIR_HANDLE;
-        if (DIR_STATE === "prompt") {
-          if ((await h.requestPermission({ mode: "readwrite" })) !== "granted")
-            return;
-        } else {
-          h = await window.showDirectoryPicker({ mode: "readwrite" });
-          if (h.name !== "data")
-            return toast(
-              "Choisissez le dossier « data » de votre projet.",
-              "alert"
-            );
-          await idbSet("dir", h);
-        }
-        await writeFiles(h); // écrit l'état actuel (rien n'est perdu)
-        [KEY, BKEY, DKEY].forEach((k) => localStorage.removeItem(k));
+        await writeFiles(DIR_HANDLE); // écrit l'état actuel (rien n'est perdu)
         toast("Dossier connecté : data.json et data.csv mis à jour.");
         setTimeout(() => location.reload(), 800);
       } catch (err) {
-        if (err.name !== "AbortError")
-          toast("Connexion impossible : " + err.message, "alert");
+        toast("Connexion impossible : " + err.message, "alert");
       }
     });
     $("#resetBtn")?.addEventListener("click", async (e) => {
@@ -1549,7 +1713,7 @@ const pages = {
     const go = (pane) => {
       $$(".settings-pane").forEach((p) => (p.hidden = p.dataset.pane !== pane));
       tabs.forEach((t) =>
-        t.classList.toggle("active", t.dataset.pane === pane)
+        t.classList.toggle("active", t.dataset.pane === pane),
       );
     };
     const find = () => {
@@ -1557,7 +1721,7 @@ const pages = {
       const q = norm(top.value.trim());
       if (!q) return 0;
       const hits = $$(
-        ".settings-card label, .settings-card h2, .setting-link"
+        ".settings-card label, .settings-card h2, .setting-link",
       ).filter((el) => norm(el.textContent).includes(q));
       hits.forEach((h) => h.classList.add("hit"));
       if (hits.length) go(hits[0].closest(".settings-pane").dataset.pane);
@@ -1639,10 +1803,10 @@ function initSearch() {
             .map(
               (b) =>
                 `<a href="${PAGES_URL}detail.html?b=${encodeURIComponent(
-                  b.nom
+                  b.nom,
                 )}"><span>▦</span>${esc(b.nom)}<small>${esc(
-                  b.type || ""
-                )}</small></a>`
+                  b.type || "",
+                )}</small></a>`,
             )
             .join("")
         : "") +
@@ -1653,7 +1817,7 @@ function initSearch() {
             .join("")
         : "") +
       `<h4>Mesures</h4><a href="${PAGES_URL}donnees.html?q=${encodeURIComponent(
-        raw
+        raw,
       )}"><span>⌕</span>Chercher « ${esc(raw)} » dans les mesures</a>`;
     box.hidden = false;
   };
@@ -1677,7 +1841,7 @@ function initCommon() {
   if (who && $(".top-actions")) {
     $(".top-actions").insertAdjacentHTML(
       "beforeend",
-      '<button class="icon-btn logout-btn" title="Se déconnecter" aria-label="Se déconnecter">⎋</button>'
+      '<button class="icon-btn logout-btn" title="Se déconnecter" aria-label="Se déconnecter">⎋</button>',
     );
     $(".logout-btn").addEventListener("click", logout);
     const pr = $(".profile");
@@ -1701,7 +1865,7 @@ function initCommon() {
       n
         ? `${n} alerte(s) active(s). Détails dans la page Données.`
         : "Aucune alerte active.",
-      n ? "alert" : "ok"
+      n ? "alert" : "ok",
     );
   });
 
@@ -1740,18 +1904,20 @@ function initCommon() {
     if (/[,"\n\r]/.test(nom) || nom.length > 49)
       return toast(
         "Nom invalide : pas de virgule ni de guillemet, 49 caractères max.",
-        "alert"
+        "alert",
       );
     const nb = { nom, type: r.type, etages: +r.etages, surface: +r.surface };
-    if (SERVER) {
-      state.batiments.push(nb);
-      if (!(await persist())) return;
-    } else {
+    state.batiments.push(nb);
+    if (!(await persist())) {
+      state.batiments.pop();
+      return;
+    }
+    if (!SERVER) {
       localStorage.setItem(
         DKEY,
         JSON.stringify(
-          readList(DKEY).filter((x) => x.toLowerCase() !== nom.toLowerCase())
-        )
+          readList(DKEY).filter((x) => x.toLowerCase() !== nom.toLowerCase()),
+        ),
       );
       const list = readList(BKEY);
       list.push(nb);
@@ -1774,9 +1940,9 @@ function initCommon() {
     $$(".settings-tabs .tab").forEach((t) =>
       t.addEventListener("click", () =>
         $$(".settings-pane").forEach(
-          (p) => (p.hidden = p.dataset.pane !== t.dataset.pane)
-        )
-      )
+          (p) => (p.hidden = p.dataset.pane !== t.dataset.pane),
+        ),
+      ),
     );
     $("#pwdBtn").addEventListener("click", async (e) => {
       e.preventDefault();
@@ -1800,7 +1966,7 @@ function initCommon() {
       if (r.n.length < 8 || r.n !== r.c)
         return toast(
           "Nouveau mot de passe trop court (8 min.) ou confirmation différente.",
-          "alert"
+          "alert",
         );
       await changePassword(me.u, r.n);
       toast("Mot de passe modifié.");
@@ -1817,7 +1983,7 @@ function initCommon() {
         })
       ) {
         [KEY, BKEY, DKEY, SKEY, "ecocampus-theme"].forEach((k) =>
-          localStorage.removeItem(k)
+          localStorage.removeItem(k),
         );
         location.reload();
       }
@@ -1827,18 +1993,18 @@ function initCommon() {
   $$(".chart-tabs .tab, .detail-tabs .tab").forEach((tab) =>
     tab.addEventListener("click", () => {
       $$(".tab", tab.parentElement).forEach((t) =>
-        t.classList.remove("active")
+        t.classList.remove("active"),
       );
       tab.classList.add("active");
-    })
+    }),
   );
   $$(".settings-tabs .tab").forEach((tab) =>
     tab.addEventListener("click", () => {
       $$(".tab", tab.parentElement).forEach((t) =>
-        t.classList.remove("active")
+        t.classList.remove("active"),
       );
       tab.classList.add("active");
-    })
+    }),
   );
 }
 
