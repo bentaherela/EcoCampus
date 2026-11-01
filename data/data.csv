@@ -23,4 +23,7 @@ id,batiment,ressource,valeur,date_heure,seuil
 21,Cours,electricite,2100.00,2026-10-09 08:00,2000.00
 23,Cours,electricite,2000.00,2026-10-09 06:00,2000.00
 24,Cours,electricite,2000.00,2026-10-09 05:00,2000.00
-25,Bibliotheque,electricite,500.00,2026-10-23 22:12,2000.00
+25,Residence,electricite,500.00,2026-10-23 22:52,2000.00
+26,cours,eau,2000.00,2026-10-23 22:54,2000.00
+27,Cours,electricite,500.00,2026-10-23 22:56,2000.00
+28,Laboratoires,chauffage,500.00,2026-10-23 22:58,1500.00
