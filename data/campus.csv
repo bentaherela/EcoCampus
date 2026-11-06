@@ -1,0 +1,7 @@
+id,nom,categorie,latitude,longitude,description,horaires,telephone,services,batiment,source
+1,Institut Supérieur des Études Technologiques de Bizerte (ISET),Enseignement,37.234179,9.885451,"Établissement public rattaché à la Direction générale des études technologiques, créé en 2005. Campus Universitaire Menzel Abderrahmane, BP 65.",,+216 72 570 601,Licence appliquée|Mastère professionnel,,OpenStreetMap
+2,Institut Supérieur de Gestion de Bizerte (ISG),Enseignement,37.236233,9.882107,"Établissement de gestion de l'Université de Carthage, fondé en 2005.","Lun-Jeu 08:30-18:00 · Ven-Sam 08:30-13:00",+216 72 570 780,Informatique de gestion|Sciences économiques|Sciences de gestion,,Wikidata Q83725818
+3,École Nationale d'Ingénieurs de Bizerte (ENIB),Enseignement,37.2344,9.88234,"École d'ingénieurs de l'Université de Carthage, créée en 2009. BP 66.",,+216 72 570 585,Formation d'ingénieurs,,OpenStreetMap way 1368488041
+4,Foyer Universitaire,Résidence,37.238954,9.881555,"Hébergement des étudiants du campus (projet de 1 200 lits).",,,Hébergement,,OpenStreetMap way 1369678912
+5,Pôle de Compétitivité de Bizerte (technopôle),Technopôle,37.24132,9.88839,"Technopôle agro-alimentaire. Boulevard de l'Union du Grand Maghreb Arabe, Menzel Jemil.",,+216 72 572 443,Technopôle agro-alimentaire|Espaces industriels,,OpenStreetMap way 256591664
+6,Restaurant Universitaire,Restauration,,,"Restaurant du campus (projet de 1 500 places). Position à confirmer sur la carte.",,,Restauration,,

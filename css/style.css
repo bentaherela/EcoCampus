@@ -2322,7 +2322,8 @@ body.big-text {
   .activity-list small {
     grid-column: 2;
   }
-}.del-bat {
+}
+.del-bat {
   width: 100%;
   margin-top: 10px;
 }
@@ -2343,4 +2344,246 @@ body.big-text {
 .dark-mode .delete-row:hover {
   background: #dc2626;
   color: #fff;
+}
+/* Page Bâtiments : en-tête de carte avec boutons Modifier / Supprimer */
+.building-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.building-head h2 {
+  margin: 0;
+  padding-top: 6px;
+  overflow-wrap: anywhere;
+}
+.building-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.building-meta {
+  font-size: 10px;
+  margin: 0 0 10px;
+}
+/* Page Détail : onglets Historique / Statistiques / Alertes */
+#detailView {
+  margin-bottom: 16px;
+}
+.detail-alerts {
+  display: grid;
+  gap: 10px;
+  padding: 0 18px 18px;
+}
+
+/* =====================================================================
+   Changement de langue (i18n.js) : bouton, menu, arabe et sens RTL
+   ===================================================================== */
+.lang-switch {
+  position: relative;
+}
+.lang-btn {
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+.lang-btn .icon {
+  width: 18px;
+  height: 18px;
+}
+.lang-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  inset-inline-end: 0;
+  list-style: none;
+  margin: 0;
+  padding: 6px;
+  min-width: 156px;
+  background: var(--panel);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: 0 12px 32px #0003;
+  z-index: 60;
+}
+.lang-menu[hidden] {
+  display: none;
+}
+.lang-menu button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 12px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 13px;
+  text-align: start;
+  cursor: pointer;
+}
+.lang-menu button:hover,
+.lang-menu button:focus-visible {
+  background: color-mix(in srgb, var(--line) 55%, transparent);
+}
+.lang-menu button[aria-checked="true"] {
+  font-weight: 700;
+  color: #0a886c;
+}
+.lang-menu button[aria-checked="true"]::after {
+  content: "✓";
+}
+.dark-mode .lang-menu button[aria-checked="true"] {
+  color: #6fe0bd;
+}
+/* Page de connexion : pas de barre du haut, le bouton flotte dans le coin */
+.lang-floating {
+  position: fixed;
+  top: 16px;
+  inset-inline-end: 16px;
+  z-index: 60;
+}
+
+/* Arabe : police adaptée, et pas d'espacement entre les lettres
+   (il casserait la liaison des lettres arabes). */
+html[lang="ar"] body,
+html[lang="ar"] :is(button, input, select, textarea) {
+  font-family: "Noto Sans Arabic", "Segoe UI", Tahoma, Arial, sans-serif;
+}
+html[lang="ar"] * {
+  letter-spacing: 0 !important;
+  text-transform: none !important;
+}
+
+/* Sens d'écriture droite → gauche : on inverse ce qui était posé à gauche
+   ou à droite. Flex et grid se retournent tout seuls avec dir="rtl". */
+html[dir="rtl"] .chart-box {
+  direction: ltr; /* les courbes gardent leurs axes habituels */
+}
+html[dir="rtl"] .sidebar:after {
+  left: auto;
+  right: -70px;
+}
+html[dir="rtl"] .top-actions,
+html[dir="rtl"] .resource-tabs .btn-outline-success,
+html[dir="rtl"] .legend-list b,
+html[dir="rtl"] .building-value span,
+html[dir="rtl"] .sustainability > a,
+html[dir="rtl"] .search-results a small {
+  margin-left: 0;
+  margin-right: auto;
+}
+html[dir="rtl"] .metric p span {
+  margin-left: 0;
+  margin-right: 4px;
+}
+html[dir="rtl"] table {
+  text-align: right;
+}
+html[dir="rtl"] .notice span {
+  margin-right: 0;
+  margin-left: 8px;
+}
+html[dir="rtl"] .rank-list strong,
+html[dir="rtl"] .total-illustration {
+  text-align: left;
+}
+html[dir="rtl"] .building-photo span {
+  left: auto;
+  right: 12px;
+}
+html[dir="rtl"] .toast-wrap {
+  right: auto;
+  left: 18px;
+}
+html[dir="rtl"] .toast,
+html[dir="rtl"] .toast.alert {
+  border-left: 0;
+  border-right: 4px solid var(--ok);
+  animation: toastInRtl 0.35s ease;
+}
+html[dir="rtl"] .toast.alert {
+  border-right-color: var(--c-alert);
+  animation: toastInRtl 0.35s ease, pulse 1.2s 0.35s 2;
+}
+@keyframes toastInRtl {
+  from {
+    transform: translateX(-30px);
+    opacity: 0;
+  }
+}
+html[dir="rtl"] .pwd-wrap input {
+  padding-right: 12px !important;
+  padding-left: 44px !important;
+}
+html[dir="rtl"] .pwd-toggle {
+  right: auto;
+  left: 4px;
+}
+html[dir="rtl"] .search-results {
+  left: 0;
+  right: 0;
+}
+html[dir="rtl"] .period-pop {
+  right: auto;
+  left: 0;
+}
+@media (max-width: 760px) {
+  html[dir="rtl"] .period-pop {
+    left: auto;
+    right: 0;
+  }
+  html[dir="rtl"] .resource-tabs .btn-outline-success {
+    margin-right: 0;
+  }
+  html[dir="rtl"] .toast-wrap {
+    left: 12px;
+    right: 12px;
+  }
+}
+
+/* ---------- Logo ---------- */
+.brand-icon:has(img) {
+  background: none;
+}
+.brand-icon img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 13px;
+}
+
+/* ---------- Photo de profil ---------- */
+html .avatar.has-photo,
+html .profile-avatar.has-photo {
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  color: transparent;
+}
+.photo-row {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+.photo-preview {
+  width: 96px;
+  height: 96px;
+  font-size: 40px;
+  box-shadow: 0 0 0 3px var(--panel), 0 0 0 5px var(--line);
+}
+.photo-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-start;
+}
+.photo-card .login-error {
+  margin-top: 10px;
 }
