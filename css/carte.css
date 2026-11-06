@@ -1,0 +1,654 @@
+/* =====================================================================
+   EcoCampus — page Carte du campus (complète style.css, mêmes variables)
+   ===================================================================== */
+.sync-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 13px;
+  border-radius: 999px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.sync-pill i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #f59e0b;
+}
+.sync-pill.ok i {
+  background: var(--green2);
+  box-shadow: 0 0 0 0 #10ad8266;
+  animation: ccPulse 2.4s infinite;
+}
+.sync-pill.err i {
+  background: #ef4444;
+}
+@keyframes ccPulse {
+  70% {
+    box-shadow: 0 0 0 7px #10ad8200;
+  }
+  100% {
+    box-shadow: 0 0 0 0 #10ad8200;
+  }
+}
+
+.map-toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.map-search {
+  width: 100%;
+  max-width: none;
+  height: 44px;
+}
+.map-search input {
+  width: 100%;
+}
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.chip {
+  --c: var(--green);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 13px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  color: var(--ink);
+  font-weight: 600;
+  font-size: 12px;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.chip b {
+  font-size: 11px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--pale);
+  color: var(--green);
+}
+.chip:hover {
+  border-color: var(--c);
+}
+.chip.on {
+  background: var(--c);
+  border-color: var(--c);
+  color: #fff;
+}
+.chip.on b {
+  background: #ffffff33;
+  color: #fff;
+}
+
+.map-layout {
+  display: grid;
+  grid-template-columns: 330px minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+  margin-bottom: 16px;
+}
+.map-list {
+  padding: 14px;
+  height: clamp(480px, 72vh, 760px);
+  display: flex;
+  flex-direction: column;
+}
+.map-list .panel-heading {
+  margin-bottom: 10px;
+}
+.place-list {
+  overflow-y: auto;
+  margin: 0 -6px;
+  padding: 0 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.place-item {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 9px 10px;
+  border: 1px solid transparent;
+  border-radius: 11px;
+  cursor: pointer;
+}
+.place-item:hover,
+.place-item:focus-visible {
+  background: var(--pale);
+  outline: none;
+}
+.place-item.sel {
+  background: var(--pale);
+  border-color: var(--green2);
+}
+.place-ico {
+  --c: var(--green);
+  flex: 0 0 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border-radius: 11px;
+  background: color-mix(in srgb, var(--c) 16%, transparent);
+  font-size: 17px;
+}
+.place-txt {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.place-txt b {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.place-txt small {
+  color: var(--muted);
+}
+.place-txt .warn {
+  color: #d97706;
+  font-weight: 600;
+}
+.mini {
+  border: 1px solid var(--green2);
+  background: transparent;
+  color: var(--green);
+  border-radius: 8px;
+  padding: 5px 9px;
+  font-size: 11px;
+  font-weight: 700;
+}
+.mini:hover {
+  background: var(--green);
+  color: #fff;
+}
+.empty {
+  color: var(--muted);
+  text-align: center;
+  padding: 26px 10px;
+}
+
+.map-wrap {
+  position: relative;
+  border-radius: 13px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+  background: var(--panel);
+}
+#campusMap {
+  height: clamp(480px, 72vh, 760px);
+  width: 100%;
+  z-index: 0;
+  font-family: Inter, Arial, sans-serif;
+}
+#campusMap.is-placing {
+  cursor: crosshair;
+}
+.map-error {
+  padding: 30px;
+  color: var(--muted);
+}
+
+/* Bulles d'information au-dessus de la carte */
+.map-hint,
+.place-banner {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 600;
+  max-width: calc(100% - 100px);
+  padding: 10px 16px;
+  border-radius: 12px;
+  background: var(--panel);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  box-shadow: 0 8px 24px #00323a33;
+  text-align: center;
+  line-height: 1.45;
+}
+.map-hint {
+  bottom: 28px;
+}
+.place-banner {
+  top: 12px;
+  background: var(--green);
+  color: #fff;
+  border-color: var(--green);
+}
+.place-banner button {
+  margin-left: 10px;
+  border: 1px solid #ffffff88;
+  background: transparent;
+  color: #fff;
+  border-radius: 8px;
+  padding: 3px 10px;
+  font-weight: 600;
+}
+
+/* Marqueurs */
+.cc-pin-wrap {
+  background: none;
+  border: 0;
+}
+.cc-pin {
+  --c: var(--green);
+  width: 34px;
+  height: 34px;
+  border-radius: 50% 50% 50% 0;
+  transform: rotate(-45deg);
+  background: var(--c);
+  border: 2px solid #fff;
+  box-shadow: 0 3px 10px #00000050;
+  display: grid;
+  place-items: center;
+  transition: transform 0.15s;
+}
+.cc-pin span {
+  transform: rotate(45deg);
+  font-size: 15px;
+  line-height: 1;
+}
+.cc-pin:hover,
+.cc-pin.is-selected {
+  transform: rotate(-45deg) scale(1.18);
+}
+.cc-pin.is-selected {
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--c) 40%, transparent),
+    0 3px 10px #00000050;
+}
+
+/* Fenêtre d'information (popup) */
+.leaflet-popup-content-wrapper {
+  border-radius: 14px;
+  padding: 2px;
+}
+.leaflet-popup-content {
+  margin: 12px 14px;
+  color: #123c43;
+}
+.cc-pop h3 {
+  margin: 8px 0 4px;
+  font-size: 16px;
+  color: #123c43;
+}
+.cc-pop p {
+  margin: 0 0 8px;
+  color: #4a6a70;
+  line-height: 1.45;
+}
+.cc-badge {
+  --c: var(--green);
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--c) 16%, #fff);
+  color: #123c43;
+  font-size: 11px;
+  font-weight: 700;
+}
+.cc-meta {
+  list-style: none;
+  margin: 0 0 10px;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+}
+.cc-meta a {
+  color: var(--green);
+  font-weight: 600;
+}
+.cc-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.cc-btn {
+  border: 0;
+  border-radius: 9px;
+  padding: 8px 13px;
+  background: var(--green);
+  color: #fff !important;
+  font-weight: 700;
+  font-size: 12px;
+  cursor: pointer;
+}
+.cc-btn:hover {
+  background: #066650;
+}
+.cc-btn.ghost {
+  background: var(--pale);
+  color: var(--green) !important;
+}
+
+/* Boutons de la carte */
+.cc-tools a {
+  font-size: 17px;
+  cursor: pointer;
+}
+
+/* Panneau d'itinéraire */
+.route-panel {
+  position: absolute;
+  z-index: 700;
+  left: 12px;
+  bottom: 28px;
+  width: min(340px, calc(100% - 24px));
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: var(--panel);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  box-shadow: 0 10px 30px #00323a40;
+}
+.route-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: var(--green);
+}
+.route-x {
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: 15px;
+}
+.route-dest {
+  margin: 6px 0 10px;
+}
+.route-from {
+  display: block;
+  color: var(--muted);
+  font-weight: 600;
+  font-size: 12px;
+}
+.route-from select {
+  display: block;
+  width: 100%;
+  margin-top: 5px;
+  padding: 9px 10px;
+  border-radius: 9px;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  color: var(--ink);
+}
+.route-info {
+  margin: 12px 0 8px;
+  min-height: 20px;
+  font-size: 14px;
+}
+.route-info small {
+  display: block;
+  margin-top: 4px;
+  color: #d97706;
+  font-size: 11px;
+}
+.route-ext {
+  color: var(--green);
+  font-weight: 700;
+  font-size: 12px;
+}
+.spin {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--line);
+  border-top-color: var(--green);
+  border-radius: 50%;
+  animation: ccSpin 0.8s linear infinite;
+  vertical-align: -2px;
+}
+@keyframes ccSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.dark-mode .chip,
+.dark-mode .sync-pill {
+  background: var(--panel);
+}
+.dark-mode .leaflet-control-layers,
+.dark-mode .leaflet-bar a {
+  background: var(--panel);
+  color: var(--ink);
+}
+
+/* Mobile : carte d'abord, liste dessous */
+@media (max-width: 900px) {
+  .map-layout {
+    grid-template-columns: 1fr;
+  }
+  .map-wrap {
+    order: -1;
+  }
+  #campusMap {
+    height: 62vh;
+    min-height: 380px;
+  }
+  .map-list {
+    height: auto;
+    max-height: 440px;
+  }
+  .chips {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    scrollbar-width: none;
+  }
+  .chip {
+    flex: 0 0 auto;
+  }
+  .route-panel {
+    left: 8px;
+    right: 8px;
+    bottom: 22px;
+    width: auto;
+  }
+  .map-hint,
+  .place-banner {
+    max-width: calc(100% - 64px);
+    font-size: 12px;
+  }
+}
+
+/* ===== Filtres (établissements / équipements et services) ===== */
+.view-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.vtab {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 16px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  color: var(--ink);
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.vtab b {
+  font-size: 11px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--pale);
+  color: var(--green);
+}
+.vtab b:empty {
+  display: none;
+}
+.vtab:hover {
+  border-color: var(--green2);
+}
+.vtab.on {
+  background: var(--green);
+  border-color: var(--green);
+  color: #fff;
+}
+.vtab.on b {
+  background: #ffffff33;
+  color: #fff;
+}
+
+/* ===== Fiche d un lieu ===== */
+.cc-pop {
+  width: 100%;
+  max-height: min(430px, 62vh);
+  overflow-y: auto;
+  padding-right: 2px;
+}
+.cc-top {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+.cc-badge.strong {
+  background: var(--c);
+  color: #fff;
+}
+.cc-badge.kind {
+  background: #eef3f2;
+  color: #4a6a70;
+}
+.cc-sec {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #f6faf9;
+  border: 1px solid #dbe7e5;
+}
+.cc-sec-title {
+  margin: 0 0 6px;
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #087c62;
+}
+.cc-sec h3 {
+  margin: 2px 0 6px;
+}
+.cc-info {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 12px;
+  margin: 0 0 8px;
+  font-size: 13px;
+}
+.cc-info dt {
+  color: #6b8489;
+  font-weight: 600;
+}
+.cc-info dd {
+  margin: 0;
+  font-weight: 600;
+  color: #123c43;
+}
+.cc-info dd small {
+  display: block;
+  color: #6b8489;
+  font-weight: 400;
+  font-size: 11px;
+}
+.cc-actions .cc-btn {
+  text-decoration: none;
+}
+
+@media (max-width: 700px) {
+  .vtab {
+    flex: 1 1 100%;
+    justify-content: center;
+  }
+  .cc-pop {
+    max-height: 52vh;
+  }
+}
+
+.cc-desc {
+  margin: 4px 0 0 !important;
+  font-size: 12px;
+}
+.cc-info a {
+  color: var(--green);
+}
+
+/* Fiche compacte : adresse, téléphone et consommation visibles sans défiler */
+.cc-pop {
+  max-height: min(540px, 74vh);
+}
+.cc-general {
+  padding: 8px 12px;
+  margin-top: 6px;
+}
+.cc-general .cc-info {
+  margin: 0;
+}
+.cc-more {
+  margin-top: 6px;
+  font-size: 12px;
+}
+.cc-more summary {
+  cursor: pointer;
+  color: #087c62;
+  font-weight: 700;
+}
+.cc-more p {
+  margin: 4px 0 0;
+}
+.cc-sec-title {
+  margin-bottom: 4px;
+}
+.cc-muted {
+  color: #6b8489;
+  font-size: 11px;
+}
+
+/* Fiche : section unique « Informations du lieu » */
+.cc-general .cc-sec-title {
+  font-size: 11px;
+  font-weight: 800;
+}
+.cc-general p {
+  margin: 6px 0 0;
+  font-size: 13px;
+}
+.cc-general .cc-tel a {
+  font-weight: 700;
+}
+
+/* ===== Arabe (écriture de droite à gauche) =====
+     La carte et ses boutons restent dans le sens normal (sinon Leaflet
+     déplace ses contrôles), mais les textes affichés dessus passent en RTL. */
+html[dir="rtl"] .leaflet-container {
+  direction: ltr;
+}
+html[dir="rtl"] .leaflet-popup-content,
+html[dir="rtl"] .leaflet-tooltip,
+html[dir="rtl"] .leaflet-control-layers-list {
+  direction: rtl;
+  text-align: right;
+}
+html[dir="rtl"] .cc-pop {
+  padding-right: 0;
+  padding-left: 2px;
+}
+html[dir="rtl"] .place-banner button {
+  margin-left: 0;
+  margin-right: 10px;
+}

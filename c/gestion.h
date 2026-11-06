@@ -17,13 +17,14 @@
 
 /* Une MESURE = un releve de consommation, c'est-a-dire une ligne du CSV.
    Exemple : 4,Residence,eau,540.00,2026-10-07 07:00,500.00 */
-typedef struct {
-    int id;               /* numero unique de la mesure (ex : 4) */
-    char batiment[50];    /* nom du batiment (ex : "Residence") */
-    char ressource[20];   /* ce qui est mesure : eau, electricite... */
-    float valeur;         /* quantite consommee (kWh, m3...) */
-    char date_heure[20];  /* date du releve : "AAAA-MM-JJ HH:MM" */
-    float seuil;          /* limite a ne pas depasser : au-dessus = alerte */
+typedef struct
+{
+   int id;              /* numero unique de la mesure (ex : 4) */
+   char batiment[50];   /* nom du batiment (ex : "Residence") */
+   char ressource[20];  /* ce qui est mesure : eau, electricite... */
+   float valeur;        /* quantite consommee (kWh, m3...) */
+   char date_heure[20]; /* date du releve : "AAAA-MM-JJ HH:MM" */
+   float seuil;         /* limite a ne pas depasser : au-dessus = alerte */
 } Mesure;
 
 /* ---------- Lecture, sauvegarde et affichage (lecture.c) ---------- */
@@ -81,15 +82,16 @@ void trierParDate(Mesure mesures[], int nombre, int croissant);
 
 /* Statistiques pour un couple (batiment, ressource).
    On ne melange pas electricite (kWh) et eau (m3) dans un meme total. */
-typedef struct {
-    char batiment[50];    /* le batiment du groupe */
-    char ressource[20];   /* la ressource du groupe */
-    int nb_mesures;       /* combien de mesures dans ce groupe */
-    int nb_alertes;       /* combien de ces mesures depassent le seuil */
-    float total;          /* somme des valeurs */
-    float moyenne;        /* total / nb_mesures */
-    float min;            /* plus petite valeur */
-    float max;            /* plus grande valeur */
+typedef struct
+{
+   char batiment[50];  /* le batiment du groupe */
+   char ressource[20]; /* la ressource du groupe */
+   int nb_mesures;     /* combien de mesures dans ce groupe */
+   int nb_alertes;     /* combien de ces mesures depassent le seuil */
+   float total;        /* somme des valeurs */
+   float moyenne;      /* total / nb_mesures */
+   float min;          /* plus petite valeur */
+   float max;          /* plus grande valeur */
 } StatsBatiment;
 
 /* Anomalie : 1 si valeur > seuil, 0 sinon */
@@ -106,7 +108,7 @@ float moyenneMobile(const float valeurs[], int i, int n);
 
 /* Nombre de valeurs utilisees pour la moyenne mobile */
 #define FENETRE_MOBILE 2
- 
+
 /* Affiche la moyenne mobile et la tendance (hausse / baisse / stable)
    d'un couple (batiment, ressource), mesures classees par date.
    Retourne le nombre de mesures du couple (0 si aucune). */
