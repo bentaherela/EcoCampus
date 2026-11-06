@@ -43,15 +43,19 @@ static int egalSansCasse(const char *a, const char *b);
    on recopie l'ecriture deja connue. Sinon les statistiques compteraient
    deux batiments differents alors que c'est le meme.
    ------------------------------------------------------------------ */
-int ajouterMesure(Mesure mesures[],int *nombre,int capacite,Mesure nouvelleMesure){
-    if (*nombre >= capacite) {
+int ajouterMesure(Mesure mesures[], int *nombre, int capacite, Mesure nouvelleMesure)
+{
+    if (*nombre >= capacite)
+    {
         return 0; /* tableau plein */
     }
 
     /* meme batiment ecrit autrement ("cours" / "Cours") : on garde le nom
        deja utilise, sinon il serait compte comme un autre batiment */
-    for (int i = 0; i < *nombre; i++) {
-        if (egalSansCasse(mesures[i].batiment, nouvelleMesure.batiment)) {
+    for (int i = 0; i < *nombre; i++)
+    {
+        if (egalSansCasse(mesures[i].batiment, nouvelleMesure.batiment))
+        {
             strcpy(nouvelleMesure.batiment, mesures[i].batiment);
             break;
         }
@@ -71,7 +75,8 @@ int ajouterMesure(Mesure mesures[],int *nombre,int capacite,Mesure nouvelleMesur
 static void enMinuscules(const char *src, char *dst, size_t taille)
 {
     size_t i;
-    for (i = 0; i + 1 < taille && src[i] != '\0'; i++) {
+    for (i = 0; i + 1 < taille && src[i] != '\0'; i++)
+    {
         dst[i] = (char)tolower((unsigned char)src[i]);
     }
     dst[i] = '\0';
@@ -85,7 +90,8 @@ static void enMinuscules(const char *src, char *dst, size_t taille)
 static void supprimerEspacesFin(char *s)
 {
     size_t n = strlen(s);
-    while (n > 0 && isspace((unsigned char)s[n - 1])) {
+    while (n > 0 && isspace((unsigned char)s[n - 1]))
+    {
         s[--n] = '\0';
     }
 }
@@ -117,16 +123,20 @@ static int contientTexte(const char *texte, const char *motif)
 int rechercherParBatiment(const Mesure mesures[], int nombre, const char *batiment)
 {
     int trouves = 0;
-    for (int i = 0; i < nombre; i++) {
-        if (contientTexte(mesures[i].batiment, batiment)) {
-            if (trouves == 0) {
+    for (int i = 0; i < nombre; i++)
+    {
+        if (contientTexte(mesures[i].batiment, batiment))
+        {
+            if (trouves == 0)
+            {
                 afficherEnTeteTableau();
             }
             afficherLigneMesure(&mesures[i]);
             trouves++;
         }
     }
-    if (trouves > 0) {
+    if (trouves > 0)
+    {
         afficherPiedTableau(trouves);
     }
     return trouves;
@@ -140,16 +150,20 @@ int rechercherParBatiment(const Mesure mesures[], int nombre, const char *batime
 int rechercherParRessource(const Mesure mesures[], int nombre, const char *ressource)
 {
     int trouves = 0;
-    for (int i = 0; i < nombre; i++) {
-        if (contientTexte(mesures[i].ressource, ressource)) {
-            if (trouves == 0) {
+    for (int i = 0; i < nombre; i++)
+    {
+        if (contientTexte(mesures[i].ressource, ressource))
+        {
+            if (trouves == 0)
+            {
                 afficherEnTeteTableau();
             }
             afficherLigneMesure(&mesures[i]);
             trouves++;
         }
     }
-    if (trouves > 0) {
+    if (trouves > 0)
+    {
         afficherPiedTableau(trouves);
     }
     return trouves;
@@ -166,10 +180,13 @@ int rechercherParRessource(const Mesure mesures[], int nombre, const char *resso
    ------------------------------------------------------------------ */
 int supprimerMesure(Mesure mesures[], int *nombre, int id)
 {
-    for (int i = 0; i < *nombre; i++) {
-        if (mesures[i].id == id) {
+    for (int i = 0; i < *nombre; i++)
+    {
+        if (mesures[i].id == id)
+        {
             /* decaler tous les elements suivants vers la gauche */
-            for (int j = i; j < *nombre - 1; j++) {
+            for (int j = i; j < *nombre - 1; j++)
+            {
                 mesures[j] = mesures[j + 1];
             }
             (*nombre)--;
@@ -186,8 +203,10 @@ int supprimerMesure(Mesure mesures[], int *nombre, int id)
    ------------------------------------------------------------------ */
 int indiceParId(const Mesure mesures[], int nombre, int id)
 {
-    for (int i = 0; i < nombre; i++) {
-        if (mesures[i].id == id) {
+    for (int i = 0; i < nombre; i++)
+    {
+        if (mesures[i].id == id)
+        {
             return i;
         }
     }
@@ -205,13 +224,16 @@ int indiceParId(const Mesure mesures[], int nombre, int id)
 int modifierMesure(Mesure mesures[], int nombre, int id, Mesure nouvelle)
 {
     int i = indiceParId(mesures, nombre, id);
-    if (i < 0) {
+    if (i < 0)
+    {
         return 0; /* id introuvable */
     }
 
     /* meme regle qu'a l'ajout : un batiment deja connu garde son ecriture */
-    for (int k = 0; k < nombre; k++) {
-        if (k != i && egalSansCasse(mesures[k].batiment, nouvelle.batiment)) {
+    for (int k = 0; k < nombre; k++)
+    {
+        if (k != i && egalSansCasse(mesures[k].batiment, nouvelle.batiment))
+        {
             strcpy(nouvelle.batiment, mesures[k].batiment);
             break;
         }
@@ -233,12 +255,15 @@ int modifierMesure(Mesure mesures[], int nombre, int id, Mesure nouvelle)
    ------------------------------------------------------------------ */
 void trierParValeur(Mesure mesures[], int nombre, int croissant)
 {
-    for (int i = 0; i < nombre - 1; i++) {
-        for (int j = 0; j < nombre - 1 - i; j++) {
+    for (int i = 0; i < nombre - 1; i++)
+    {
+        for (int j = 0; j < nombre - 1 - i; j++)
+        {
             int echanger = croissant
-                ? (mesures[j].valeur > mesures[j + 1].valeur)
-                : (mesures[j].valeur < mesures[j + 1].valeur);
-            if (echanger) {
+                               ? (mesures[j].valeur > mesures[j + 1].valeur)
+                               : (mesures[j].valeur < mesures[j + 1].valeur);
+            if (echanger)
+            {
                 Mesure tmp = mesures[j];
                 mesures[j] = mesures[j + 1];
                 mesures[j + 1] = tmp;
@@ -258,11 +283,14 @@ void trierParValeur(Mesure mesures[], int nombre, int croissant)
 void trierParDate(Mesure mesures[], int nombre, int croissant)
 {
     /* le format AAAA-MM-JJ HH:MM se compare correctement avec strcmp */
-    for (int i = 0; i < nombre - 1; i++) {
-        for (int j = 0; j < nombre - 1 - i; j++) {
+    for (int i = 0; i < nombre - 1; i++)
+    {
+        for (int j = 0; j < nombre - 1 - i; j++)
+        {
             int cmp = strcmp(mesures[j].date_heure, mesures[j + 1].date_heure);
             int echanger = croissant ? (cmp > 0) : (cmp < 0);
-            if (echanger) {
+            if (echanger)
+            {
                 Mesure tmp = mesures[j];
                 mesures[j] = mesures[j + 1];
                 mesures[j + 1] = tmp;
@@ -292,16 +320,20 @@ int estAnomalie(const Mesure *m)
 int afficherAnomalies(const Mesure mesures[], int nombre)
 {
     int nb = 0;
-    for (int i = 0; i < nombre; i++) {
-        if (estAnomalie(&mesures[i])) {
-            if (nb == 0) {
+    for (int i = 0; i < nombre; i++)
+    {
+        if (estAnomalie(&mesures[i]))
+        {
+            if (nb == 0)
+            {
                 afficherEnTeteTableau();
             }
             afficherLigneMesure(&mesures[i]);
             nb++;
         }
     }
-    if (nb > 0) {
+    if (nb > 0)
+    {
         afficherPiedTableau(nb);
     }
     return nb;
@@ -332,20 +364,25 @@ int calculerStatistiques(const Mesure mesures[], int nombre,
 {
     int nbStats = 0;
 
-    for (int i = 0; i < nombre; i++) {
+    for (int i = 0; i < nombre; i++)
+    {
         /* chercher le groupe (batiment, ressource) deja cree */
         int g = -1;
-        for (int k = 0; k < nbStats; k++) {
+        for (int k = 0; k < nbStats; k++)
+        {
             if (strcmp(stats[k].batiment, mesures[i].batiment) == 0 &&
-                strcmp(stats[k].ressource, mesures[i].ressource) == 0) {
+                strcmp(stats[k].ressource, mesures[i].ressource) == 0)
+            {
                 g = k;
                 break;
             }
         }
 
         /* sinon, creer un nouveau groupe */
-        if (g == -1) {
-            if (nbStats >= capacite) {
+        if (g == -1)
+        {
+            if (nbStats >= capacite)
+            {
                 printf("Attention : trop de groupes, mesure ID %d ignoree.\n",
                        mesures[i].id);
                 continue;
@@ -364,13 +401,17 @@ int calculerStatistiques(const Mesure mesures[], int nombre,
         /* mise a jour du groupe */
         stats[g].nb_mesures++;
         stats[g].total += mesures[i].valeur;
-        if (mesures[i].valeur < stats[g].min) stats[g].min = mesures[i].valeur;
-        if (mesures[i].valeur > stats[g].max) stats[g].max = mesures[i].valeur;
-        if (estAnomalie(&mesures[i])) stats[g].nb_alertes++;
+        if (mesures[i].valeur < stats[g].min)
+            stats[g].min = mesures[i].valeur;
+        if (mesures[i].valeur > stats[g].max)
+            stats[g].max = mesures[i].valeur;
+        if (estAnomalie(&mesures[i]))
+            stats[g].nb_alertes++;
     }
 
     /* moyennes (nb_mesures >= 1 pour tout groupe cree) */
-    for (int k = 0; k < nbStats; k++) {
+    for (int k = 0; k < nbStats; k++)
+    {
         stats[k].moyenne = stats[k].total / (float)stats[k].nb_mesures;
     }
     return nbStats;
@@ -388,7 +429,8 @@ void afficherStatistiques(const StatsBatiment stats[], int nbStats)
     printf("| %-18s | %-12s | %4s | %10s | %10s | %10s | %10s | %7s |\n",
            "Batiment", "Ressource", "Nb", "Total", "Moyenne", "Min", "Max", "Alertes");
     printf(LIGNE_STATS);
-    for (int k = 0; k < nbStats; k++) {
+    for (int k = 0; k < nbStats; k++)
+    {
         printf("| %-18.18s | %-12.12s | %4d | %10.2f | %10.2f | %10.2f | %10.2f | %7d |\n",
                stats[k].batiment, stats[k].ressource, stats[k].nb_mesures,
                stats[k].total, stats[k].moyenne, stats[k].min, stats[k].max,
@@ -414,7 +456,8 @@ void afficherStatistiques(const StatsBatiment stats[], int nbStats)
 float moyenneMobile(const float valeurs[], int i, int n)
 {
     float somme = 0.0f;
-    for (int k = i - n + 1; k <= i; k++) {
+    for (int k = i - n + 1; k <= i; k++)
+    {
         somme += valeurs[k];
     }
     return somme / (float)n;
@@ -456,18 +499,23 @@ static int preparerSerie(const Mesure mesures[], int nombre,
     int nb = 0;
 
     /* 1. selectionner les mesures du couple demande */
-    for (int i = 0; i < nombre; i++) {
+    for (int i = 0; i < nombre; i++)
+    {
         if (egalSansCasse(mesures[i].batiment, batiment) &&
-            egalSansCasse(mesures[i].ressource, ressource)) {
+            egalSansCasse(mesures[i].ressource, ressource))
+        {
             idx[nb++] = i;
         }
     }
 
     /* 2. trier les INDICES par date (tri a bulles) */
-    for (int i = 0; i < nb - 1; i++) {
-        for (int j = 0; j < nb - 1 - i; j++) {
+    for (int i = 0; i < nb - 1; i++)
+    {
+        for (int j = 0; j < nb - 1 - i; j++)
+        {
             if (strcmp(mesures[idx[j]].date_heure,
-                       mesures[idx[j + 1]].date_heure) > 0) {
+                       mesures[idx[j + 1]].date_heure) > 0)
+            {
                 int tmp = idx[j];
                 idx[j] = idx[j + 1];
                 idx[j + 1] = tmp;
@@ -476,7 +524,8 @@ static int preparerSerie(const Mesure mesures[], int nombre,
     }
 
     /* 3. recopier les valeurs dans l'ordre chronologique */
-    for (int i = 0; i < nb; i++) {
+    for (int i = 0; i < nb; i++)
+    {
         valeurs[i] = mesures[idx[i]].valeur;
     }
     return nb;
@@ -499,21 +548,24 @@ static int preparerSerie(const Mesure mesures[], int nombre,
 static const char *conclureTendance(const float valeurs[], int nb, int fenetre,
                                     float *premiere, float *derniere)
 {
-    if (fenetre < 1 || nb <= fenetre) {
+    if (fenetre < 1 || nb <= fenetre)
+    {
         return "indeterminee";
     }
- 
+
     *premiere = moyenneMobile(valeurs, fenetre - 1, fenetre);
     *derniere = moyenneMobile(valeurs, nb - 1, fenetre);
- 
+
     float diff = *derniere - *premiere;
     float marge = 0.05f * (*premiere < 0 ? -*premiere : *premiere);
- 
-    if (diff > marge) return "hausse";
-    if (diff < -marge) return "baisse";
+
+    if (diff > marge)
+        return "hausse";
+    if (diff < -marge)
+        return "baisse";
     return "stable";
 }
- 
+
 /* ------------------------------------------------------------------
    afficherTendance : affiche la tendance d'un batiment pour une ressource.
 
@@ -525,69 +577,83 @@ static const char *conclureTendance(const float valeurs[], int nb, int fenetre,
 int afficherTendance(const Mesure mesures[], int nombre,
                      const char *batiment, const char *ressource, int fenetre)
 {
-    int idx[MAX_MESURES];        /* indices des mesures du couple dans mesures[] */
-    float valeurs[MAX_MESURES];  /* leurs valeurs, classees par date */
- 
-    if (fenetre < 1) {
+    int idx[MAX_MESURES];       /* indices des mesures du couple dans mesures[] */
+    float valeurs[MAX_MESURES]; /* leurs valeurs, classees par date */
+
+    if (fenetre < 1)
+    {
         return 0;
     }
- 
+
     int nb = preparerSerie(mesures, nombre, batiment, ressource, idx, valeurs);
- 
-    if (nb == 0) {
+
+    if (nb == 0)
+    {
         printf("Aucune mesure pour ce batiment et cette ressource.\n");
         return 0;
     }
-    if (nb < fenetre) {
+    if (nb < fenetre)
+    {
         printf("Pas assez de mesures (%d) pour une moyenne mobile sur %d valeurs.\n",
                nb, fenetre);
         return nb;
     }
- 
+
     /* 4. afficher les valeurs et leur moyenne mobile */
     printf("\nTendance : %s - %s (moyenne mobile sur %d valeurs)\n",
            batiment, ressource, fenetre);
     printf("+------------------+------------+--------------+\n");
     printf("| %-16s | %10s | %12s |\n", "Date/heure", "Valeur", "Moy. mobile");
     printf("+------------------+------------+--------------+\n");
- 
-    for (int i = 0; i < nb; i++) {
-        if (i >= fenetre - 1) {
+
+    for (int i = 0; i < nb; i++)
+    {
+        if (i >= fenetre - 1)
+        {
             float mm = moyenneMobile(valeurs, i, fenetre);
             printf("| %-16.16s | %10.2f | %12.2f |\n",
                    mesures[idx[i]].date_heure, valeurs[i], mm);
-        } else {
+        }
+        else
+        {
             /* pas encore assez de valeurs pour une moyenne */
             printf("| %-16.16s | %10.2f | %12s |\n",
                    mesures[idx[i]].date_heure, valeurs[i], "-");
         }
     }
- 
+
     printf("+------------------+------------+--------------+\n");
 
     /* 5. conclusion : on compare la premiere et la derniere moyenne mobile */
     float premiere = 0.0f, derniere = 0.0f;
     const char *conclusion = conclureTendance(valeurs, nb, fenetre,
                                               &premiere, &derniere);
- 
-    if (strcmp(conclusion, "indeterminee") == 0) {
+
+    if (strcmp(conclusion, "indeterminee") == 0)
+    {
         /* une seule moyenne mobile : il n'y a rien a comparer */
         printf("Tendance : impossible a determiner (il faut au moins %d mesures).\n",
                fenetre + 1);
-    } else if (strcmp(conclusion, "hausse") == 0) {
+    }
+    else if (strcmp(conclusion, "hausse") == 0)
+    {
         printf("Tendance : HAUSSE (%.2f -> %.2f)\n", premiere, derniere);
-    } else if (strcmp(conclusion, "baisse") == 0) {
+    }
+    else if (strcmp(conclusion, "baisse") == 0)
+    {
         printf("Tendance : BAISSE (%.2f -> %.2f)\n", premiere, derniere);
-    } else {
+    }
+    else
+    {
         printf("Tendance : STABLE (%.2f -> %.2f)\n", premiere, derniere);
     }
     return nb;
 }
- 
+
 /* ====================================================================
    Export JSON
    ==================================================================== */
- 
+
 /* ------------------------------------------------------------------
    ecrireChaineJSON : ecrit un texte entre guillemets dans le fichier JSON.
 
@@ -598,20 +664,26 @@ int afficherTendance(const Mesure mesures[], int nombre,
 static void ecrireChaineJSON(FILE *f, const char *s)
 {
     fputc('"', f);
-    for (; *s != '\0'; s++) {
+    for (; *s != '\0'; s++)
+    {
         unsigned char c = (unsigned char)*s;
-        if (c == '"' || c == '\\') {
+        if (c == '"' || c == '\\')
+        {
             fputc('\\', f);
             fputc(c, f);
-        } else if (c < 0x20) {
+        }
+        else if (c < 0x20)
+        {
             fprintf(f, "\\u%04x", c);
-        } else {
+        }
+        else
+        {
             fputc(c, f);
         }
     }
     fputc('"', f);
 }
- 
+
 /* ------------------------------------------------------------------
    ecrireTendancesJSON : ecrit la partie "tendances" du fichier JSON.
 
@@ -626,37 +698,45 @@ static void ecrireTendancesJSON(FILE *f, const Mesure mesures[], int nombre,
     int idx[MAX_MESURES];
     float valeurs[MAX_MESURES];
     int fenetre = FENETRE_MOBILE;
- 
+
     fprintf(f, "  \"tendances\": [\n");
-    for (int k = 0; k < nbStats; k++) {
+    for (int k = 0; k < nbStats; k++)
+    {
         int nb = preparerSerie(mesures, nombre, stats[k].batiment,
                                stats[k].ressource, idx, valeurs);
         float premiere = 0.0f, derniere = 0.0f;
         const char *conclusion = conclureTendance(valeurs, nb, fenetre,
                                                   &premiere, &derniere);
         int determinee = (strcmp(conclusion, "indeterminee") != 0);
- 
+
         fprintf(f, "    {\"batiment\": ");
         ecrireChaineJSON(f, stats[k].batiment);
         fprintf(f, ", \"ressource\": ");
         ecrireChaineJSON(f, stats[k].ressource);
         fprintf(f, ", \"fenetre\": %d, \"nb_mesures\": %d, \"tendance\": \"%s\", ",
                 fenetre, nb, conclusion);
-        if (determinee) {
+        if (determinee)
+        {
             fprintf(f, "\"premiere_moyenne\": %.2f, \"derniere_moyenne\": %.2f, ",
                     premiere, derniere);
-        } else {
+        }
+        else
+        {
             fprintf(f, "\"premiere_moyenne\": null, \"derniere_moyenne\": null, ");
         }
- 
+
         fprintf(f, "\"points\": [");
-        for (int i = 0; i < nb; i++) {
+        for (int i = 0; i < nb; i++)
+        {
             fprintf(f, "{\"date_heure\": ");
             ecrireChaineJSON(f, mesures[idx[i]].date_heure);
             fprintf(f, ", \"valeur\": %.2f, \"moyenne_mobile\": ", valeurs[i]);
-            if (i >= fenetre - 1) {
+            if (i >= fenetre - 1)
+            {
                 fprintf(f, "%.2f", moyenneMobile(valeurs, i, fenetre));
-            } else {
+            }
+            else
+            {
                 fprintf(f, "null");
             }
             fprintf(f, "}%s", (i < nb - 1) ? ", " : "");
@@ -665,7 +745,7 @@ static void ecrireTendancesJSON(FILE *f, const Mesure mesures[], int nombre,
     }
     fprintf(f, "  ]\n");
 }
- 
+
 /* ------------------------------------------------------------------
    lireSectionBatiments : recupere la partie "batiments" de l'ancien fichier
    JSON, pour la recopier telle quelle dans le nouveau.
@@ -682,7 +762,8 @@ static void ecrireTendancesJSON(FILE *f, const Mesure mesures[], int nombre,
 static char *lireSectionBatiments(const char *nomFichier)
 {
     FILE *f = fopen(nomFichier, "rb");
-    if (f == NULL) {
+    if (f == NULL)
+    {
         return NULL;
     }
 
@@ -691,7 +772,8 @@ static char *lireSectionBatiments(const char *nomFichier)
     rewind(f);
 
     char *texte = (taille >= 0) ? malloc((size_t)taille + 1) : NULL;
-    if (texte == NULL) {
+    if (texte == NULL)
+    {
         fclose(f);
         return NULL;
     }
@@ -700,7 +782,8 @@ static char *lireSectionBatiments(const char *nomFichier)
 
     char *debut = strstr(texte, "\"batiments\":");
     debut = (debut != NULL) ? strchr(debut, '[') : NULL;
-    if (debut == NULL) {
+    if (debut == NULL)
+    {
         free(texte);
         return NULL;
     }
@@ -709,19 +792,30 @@ static char *lireSectionBatiments(const char *nomFichier)
     int profondeur = 0;
     int dansChaine = 0;
     char *p;
-    for (p = debut; *p != '\0'; p++) {
-        if (dansChaine) {
-            if (*p == '\\' && p[1] != '\0') p++;
-            else if (*p == '"') dansChaine = 0;
-        } else if (*p == '"') {
+    for (p = debut; *p != '\0'; p++)
+    {
+        if (dansChaine)
+        {
+            if (*p == '\\' && p[1] != '\0')
+                p++;
+            else if (*p == '"')
+                dansChaine = 0;
+        }
+        else if (*p == '"')
+        {
             dansChaine = 1;
-        } else if (*p == '[') {
+        }
+        else if (*p == '[')
+        {
             profondeur++;
-        } else if (*p == ']' && --profondeur == 0) {
+        }
+        else if (*p == ']' && --profondeur == 0)
+        {
             break;
         }
     }
-    if (*p == '\0') {   /* tableau jamais ferme : fichier invalide */
+    if (*p == '\0')
+    { /* tableau jamais ferme : fichier invalide */
         free(texte);
         return NULL;
     }
@@ -751,22 +845,25 @@ int exporterJSON(const char *nomFichier, const Mesure mesures[], int nombre)
     int nbStats = calculerStatistiques(mesures, nombre, stats, MAX_STATS);
     int nbAlertes = 0;
 
-    for (int i = 0; i < nombre; i++) {
-        if (estAnomalie(&mesures[i])) nbAlertes++;
+    for (int i = 0; i < nombre; i++)
+    {
+        if (estAnomalie(&mesures[i]))
+            nbAlertes++;
     }
 
     /* a lire AVANT fopen("w"), qui vide le fichier */
     char *batiments = lireSectionBatiments(nomFichier);
 
     FILE *f = fopen(nomFichier, "w");
-    if (f == NULL) {
+    if (f == NULL)
+    {
         printf("Erreur : impossible de creer le fichier %s.\n", nomFichier);
         free(batiments);
         return 0;
     }
- 
+
     fprintf(f, "{\n");
- 
+
     /* --- resume --- */
     fprintf(f, "  \"resume\": {\n");
     fprintf(f, "    \"nb_mesures\": %d,\n", nombre);
@@ -775,14 +872,16 @@ int exporterJSON(const char *nomFichier, const Mesure mesures[], int nombre)
     fprintf(f, "  },\n");
 
     /* --- batiments (conserves depuis l'ancien fichier) --- */
-    if (batiments != NULL) {
+    if (batiments != NULL)
+    {
         fprintf(f, "  \"batiments\": %s,\n", batiments);
         free(batiments);
     }
 
     /* --- mesures --- */
     fprintf(f, "  \"mesures\": [\n");
-    for (int i = 0; i < nombre; i++) {
+    for (int i = 0; i < nombre; i++)
+    {
         fprintf(f, "    {\"id\": %d, \"batiment\": ", mesures[i].id);
         ecrireChaineJSON(f, mesures[i].batiment);
         fprintf(f, ", \"ressource\": ");
@@ -795,10 +894,11 @@ int exporterJSON(const char *nomFichier, const Mesure mesures[], int nombre)
                 (i < nombre - 1) ? "," : "");
     }
     fprintf(f, "  ],\n");
- 
+
     /* --- statistiques --- */
     fprintf(f, "  \"statistiques\": [\n");
-    for (int k = 0; k < nbStats; k++) {
+    for (int k = 0; k < nbStats; k++)
+    {
         fprintf(f, "    {\"batiment\": ");
         ecrireChaineJSON(f, stats[k].batiment);
         fprintf(f, ", \"ressource\": ");
@@ -810,15 +910,17 @@ int exporterJSON(const char *nomFichier, const Mesure mesures[], int nombre)
                 (k < nbStats - 1) ? "," : "");
     }
     fprintf(f, "  ],\n");
- 
+
     /* --- tendances (moyenne mobile) --- */
     ecrireTendancesJSON(f, mesures, nombre, stats, nbStats);
- 
+
     fprintf(f, "}\n");
- 
+
     int ok = !ferror(f);
-    if (fclose(f) != 0) ok = 0;
-    if (!ok) {
+    if (fclose(f) != 0)
+        ok = 0;
+    if (!ok)
+    {
         printf("Erreur : ecriture incomplete de %s.\n", nomFichier);
     }
     return ok;

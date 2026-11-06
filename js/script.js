@@ -56,6 +56,17 @@ const PAGES_URL = new URL("../pages/", SCRIPT_URL).href;
 /* Nom de la page actuelle : attribut data-page de la balise <body> */
 const CURRENT_PAGE = document.body.dataset.page;
 
+/* Langue du site (fichier i18n.js, chargé avant celui-ci).
+      t("Eau") traduit un texte français ; srcText(élément) donne son texte
+      FRANÇAIS d'origine, utile quand le code compare le titre d'un panneau ou
+      d'un onglet (le texte affiché, lui, est peut-être déjà traduit). */
+const t = (text) => (window.I18N ? I18N.t(text) : text);
+const pdfT = (text) => (window.I18N ? I18N.pdf(text) : text);
+const srcText = (element) =>
+  window.I18N ? I18N.srcText(element) : element.textContent;
+const NUMBER_LOCALE = window.I18N ? I18N.numberLocale : "fr-FR";
+const DATE_LOCALE = window.I18N ? I18N.dateLocale : "fr-FR";
+
 /* Noms des cases utilisées dans le stockage du navigateur (localStorage) */
 const SESSION_KEY = "ecocampus-auth";
 const USERS_KEY = "ecocampus-users";
@@ -86,15 +97,6 @@ const RESOURCES = {
 };
 const RESOURCE_NAMES = Object.keys(RESOURCES);
 
-/* Les bâtiments déjà présents dans le code HTML de la page Bâtiments */
-const BUILDINGS_IN_HTML = [
-  "Cours",
-  "Laboratoires",
-  "Bibliothèque",
-  "Résidence",
-  "Administration",
-];
-
 /* Le type de chaque bâtiment connu */
 const BUILDING_TYPES = {
   Cours: "Enseignement",
@@ -108,8 +110,8 @@ const BUILDING_TYPES = {
 const state = { mesures: [], batiments: [], precedent: {}, generated: "" };
 
 /* =====================================================================
-      PARTIE 2 — Petits outils réutilisables
-      ===================================================================== */
+         PARTIE 2 — Petits outils réutilisables
+         ===================================================================== */
 
 /* Trouve le premier élément HTML qui correspond au sélecteur CSS */
 function findOne(selector, parent = document) {
@@ -137,14 +139,14 @@ function sumValues(measures) {
 }
 
 /* Arrondit à 2 chiffres après la virgule : 12.3456 devient 12.35.
-      On multiplie par 100, on arrondit à l'entier, puis on divise par 100. */
+         On multiplie par 100, on arrondit à l'entier, puis on divise par 100. */
 function roundTo2Decimals(number) {
   return Math.round(number * 100) / 100;
 }
 
 /* 12500 devient « 12 500 » */
 function formatNumber(number) {
-  return Math.round(number).toLocaleString("fr-FR");
+  return Math.round(number).toLocaleString(NUMBER_LOCALE);
 }
 
 /* Ajoute un « s » au mot quand il y a plusieurs éléments */
@@ -165,7 +167,7 @@ function escapeHtml(text) {
 }
 
 /* Minuscules et sans accents : « Bâtiment » devient « batiment ».
-      Permet de comparer des textes dans les recherches. */
+         Permet de comparer des textes dans les recherches. */
 function normalizeText(text) {
   return String(text)
     .toLocaleLowerCase("fr")
@@ -194,12 +196,12 @@ function getUrlParam(name) {
 }
 
 /* =====================================================================
-      PARTIE 3 — Connexion et comptes utilisateurs
-      Tout se passe dans le navigateur (il n'y a pas de serveur).
-      Un compte est stocké sous la forme { u: nom, h: mot de passe haché }.
-      La page Profil y ajoute : nom, email, fonction, favori (bâtiment suivi),
-      bio, cree (date de création), connexion et precedente (dates de connexion).
-      ===================================================================== */
+         PARTIE 3 — Connexion et comptes utilisateurs
+         Tout se passe dans le navigateur (il n'y a pas de serveur).
+         Un compte est stocké sous la forme { u: nom, h: mot de passe haché }.
+         La page Profil y ajoute : nom, email, fonction, favori (bâtiment suivi),
+         bio, cree (date de création), connexion et precedente (dates de connexion).
+         ===================================================================== */
 
 /* Renvoie la session en cours { u: nom, t: heure de connexion }, ou null */
 function getSession() {
@@ -233,7 +235,7 @@ async function hashPassword(password) {
 }
 
 /* Enregistre la liste des comptes dans le navigateur (localStorage).
-      localStorage ne garde que du texte : JSON.stringify transforme la liste en texte. */
+         localStorage ne garde que du texte : JSON.stringify transforme la liste en texte. */
 function saveUsers(users) {
   localStorage.setItem(USERS_KEY, JSON.stringify(users));
 }
@@ -264,7 +266,7 @@ async function loadUsers() {
 }
 
 /* Nettoie un nom d'utilisateur : enlève les espaces autour et met en minuscules,
-      pour que « Admin » et « admin » soient le même compte. */
+         pour que « Admin » et « admin » soient le même compte. */
 function cleanUsername(username) {
   return username.trim().toLowerCase();
 }
@@ -296,7 +298,7 @@ async function registerUser(username, password) {
 }
 
 /* Remplace le mot de passe d'un compte. On n'enregistre jamais le mot de passe
-      lui-même, seulement son empreinte (voir hashPassword). */
+         lui-même, seulement son empreinte (voir hashPassword). */
 async function changePassword(username, newPassword) {
   const users = await loadUsers();
   const user = users.find((candidate) => candidate.u === username);
@@ -313,7 +315,7 @@ async function getCurrentUser() {
 }
 
 /* Modifie le compte d'un utilisateur. changes = { nom: "...", email: "..." }.
-      Renvoie le compte modifié, ou null s'il n'existe pas. */
+         Renvoie le compte modifié, ou null s'il n'existe pas. */
 async function updateUser(username, changes) {
   const users = await loadUsers();
   const user = users.find((candidate) => candidate.u === username);
@@ -326,6 +328,100 @@ async function updateUser(username, changes) {
 /* Nom affiché : le nom complet s'il est renseigné, sinon le nom d'utilisateur */
 function displayName(user) {
   return user.nom || user.u;
+}
+
+/* ---------- Photo de profil ----------
+      La photo est gardée dans le compte (champ « photo » de ecocampus-users, dans
+      localStorage) : elle reste donc après l'actualisation, la déconnexion et la
+      reconnexion. Pour ne pas remplir le stockage, on la recadre en carré et on
+      la réduit à 256 × 256 pixels (JPEG) avant de l'enregistrer. */
+const PHOTO_TYPES = ["image/jpeg", "image/png", "image/webp"];
+const PHOTO_MAX_BYTES = 2 * 1024 * 1024; // 2 Mo
+const PHOTO_MIN_SIDE = 64; // pixels
+const PHOTO_SIZE = 256; // pixels
+
+/* Affiche la photo dans un rond (avatar) ; sans photo : l'initiale du nom */
+function setAvatar(element, name, photo) {
+  element.style.backgroundImage = photo ? `url("${photo}")` : "";
+  element.classList.toggle("has-photo", !!photo);
+  element.textContent = photo ? "" : name.charAt(0).toUpperCase();
+}
+
+/* Photo d'un compte lue tout de suite dans localStorage (sans attendre) */
+function storedPhoto(username) {
+  try {
+    const users = JSON.parse(localStorage.getItem(USERS_KEY) || "[]");
+    return users.find((user) => user.u === username)?.photo || "";
+  } catch {
+    return "";
+  }
+}
+
+/* Vérifie le fichier choisi : renvoie un message d'erreur, ou "" si c'est bon */
+function checkPhotoFile(file) {
+  if (!PHOTO_TYPES.includes(file.type)) {
+    return "Format non accepté : choisissez une image JPG, PNG ou WebP.";
+  }
+  if (file.size > PHOTO_MAX_BYTES) {
+    const megabytes = (file.size / 1024 / 1024).toFixed(1).replace(".", ",");
+    return `Image trop lourde (${megabytes} Mo) : 2 Mo maximum.`;
+  }
+  return "";
+}
+
+/* Décode le fichier : échoue si ce n'est pas une vraie image
+      (un fichier renommé en .jpg, par exemple). */
+function loadImageFile(file) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const image = new Image();
+    image.onload = () => {
+      URL.revokeObjectURL(url);
+      resolve(image);
+    };
+    image.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("invalid"));
+    };
+    image.src = url;
+  });
+}
+
+/* Fichier image → petite photo carrée (texte « data:image/jpeg;base64,… »).
+      Renvoie { photo } ou { error }. */
+async function preparePhoto(file) {
+  const fileError = checkPhotoFile(file);
+  if (fileError) return { error: fileError };
+
+  let image;
+  try {
+    image = await loadImageFile(file);
+  } catch {
+    return { error: "Ce fichier n'est pas une image valide." };
+  }
+  const side = Math.min(image.naturalWidth, image.naturalHeight);
+  if (side < PHOTO_MIN_SIDE) {
+    return { error: "Image trop petite : 64 × 64 pixels minimum." };
+  }
+
+  /* On recadre au centre (carré) puis on réduit */
+  const canvas = document.createElement("canvas");
+  canvas.width = canvas.height = PHOTO_SIZE;
+  const context = canvas.getContext("2d");
+  context.fillStyle = "#fff"; // fond blanc pour les PNG transparents
+  context.fillRect(0, 0, PHOTO_SIZE, PHOTO_SIZE);
+  context.drawImage(
+    image,
+    (image.naturalWidth - side) / 2,
+    (image.naturalHeight - side) / 2,
+    side,
+    side,
+    0,
+    0,
+    PHOTO_SIZE,
+    PHOTO_SIZE
+  );
+  return { photo: canvas.toDataURL("image/jpeg", 0.85) };
 }
 
 /* Retient l'heure de connexion : l'ancienne devient la « connexion précédente » */
@@ -341,12 +437,12 @@ async function recordLogin(username) {
 }
 
 /* --- Journal d'activité, gardé dans le navigateur pour chaque utilisateur :
-      { admin: { compteurs: { ajout: 3, modif: 1 }, recent: [{ t, type, texte }] } }
-      type : « ajout », « modif », « suppression », « connexion » ou « compte » --- */
+         { admin: { compteurs: { ajout: 3, modif: 1 }, recent: [{ t, type, texte }] } }
+         type : « ajout », « modif », « suppression », « connexion » ou « compte » --- */
 
 /* Lit les journaux d'activité de tous les utilisateurs.
-      try / catch : si le texte enregistré est abîmé, JSON.parse provoque une erreur ;
-      on la « rattrape » et on renvoie un objet vide au lieu de bloquer la page. */
+         try / catch : si le texte enregistré est abîmé, JSON.parse provoque une erreur ;
+         on la « rattrape » et on renvoie un objet vide au lieu de bloquer la page. */
 function readAllJournals() {
   try {
     const journals = JSON.parse(localStorage.getItem(ACTIVITY_KEY) || "{}");
@@ -389,7 +485,7 @@ function startSession(username, remember) {
 }
 
 /* Déconnexion : efface la session (dans les deux stockages possibles)
-      puis renvoie vers la page de connexion. */
+         puis renvoie vers la page de connexion. */
 function logout() {
   sessionStorage.removeItem(SESSION_KEY);
   localStorage.removeItem(SESSION_KEY);
@@ -412,7 +508,7 @@ function setupLoginPage() {
   const tabs = findAll(".login-tabs button");
 
   /* Affiche l'onglet demandé (« in » = connexion, « up » = création de compte)
-        et cache l'autre. Le bouton de l'onglet affiché reçoit la classe « active ». */
+           et cache l'autre. Le bouton de l'onglet affiché reçoit la classe « active ». */
   function showTab(tabName) {
     const isLogin = tabName === "in";
     loginForm.hidden = !isLogin;
@@ -493,10 +589,10 @@ function setupLoginPage() {
 }
 
 /* =====================================================================
-      PARTIE 4 — Conversion des données du module C
-      Le module C écrit « Bibliotheque » et « electricite », le site affiche
-      « Bibliothèque » et « Électricité ». Ces tables font la traduction.
-      ===================================================================== */
+         PARTIE 4 — Conversion des données du module C
+         Le module C écrit « Bibliotheque » et « electricite », le site affiche
+         « Bibliothèque » et « Électricité ». Ces tables font la traduction.
+         ===================================================================== */
 
 const RESOURCE_FROM_C = {
   electricite: "Électricité",
@@ -520,14 +616,14 @@ const BUILDING_TO_C = {
 };
 
 /* Calcule une courte « signature » du contenu de data.json (hash djb2).
-      Elle change dès que le fichier change : on sait ainsi si la copie gardée
-      dans le navigateur (localStorage) est encore valable. */
+         Elle change dès que le fichier change : on sait ainsi si la copie gardée
+         dans le navigateur (localStorage) est encore valable. */
 function computeSignature(measures) {
   const text = JSON.stringify(measures);
   let hash = 5381;
   for (let i = 0; i < text.length; i++) {
     /* hash << 5 = hash × 32, donc la ligne fait hash × 33 + code de la lettre.
-          « | 0 » garde un entier sur 32 bits pour que le nombre ne grandisse pas sans fin. */
+             « | 0 » garde un entier sur 32 bits pour que le nombre ne grandisse pas sans fin. */
     hash = ((hash << 5) + hash + text.charCodeAt(i)) | 0;
   }
   return measures.length + "-" + (hash >>> 0).toString(36);
@@ -568,8 +664,8 @@ function convertFromModuleC(data) {
 }
 
 /* =====================================================================
-      PARTIE 5 — Réglages de l'utilisateur
-      ===================================================================== */
+         PARTIE 5 — Réglages de l'utilisateur
+         ===================================================================== */
 
 const DEFAULT_SETTINGS = {
   campus: "EcoCampus",
@@ -599,8 +695,8 @@ function readSettings() {
 let settings = readSettings();
 
 /* iso = « 2026-10-09T14:00 ». Résultat : « 09/10/2026 14:00 »
-      slice découpe le texte par position :  2026-10-09T14:00
-                                             0123456789...  → slice(0, 4) = « 2026 » */
+         slice découpe le texte par position :  2026-10-09T14:00
+                                                0123456789...  → slice(0, 4) = « 2026 » */
 function formatDate(iso) {
   const year = iso.slice(0, 4);
   const month = iso.slice(5, 7);
@@ -656,8 +752,8 @@ function saveSettings(form) {
 }
 
 /* =====================================================================
-      PARTIE 6 — Messages et boîtes de dialogue
-      ===================================================================== */
+         PARTIE 6 — Messages et boîtes de dialogue
+         ===================================================================== */
 
 /* Petit message temporaire. type : « ok » (vert) ou « alert » (rouge) */
 function showToast(message, type = "ok") {
@@ -684,12 +780,17 @@ function showError(message) {
 }
 
 /* Code HTML d'un champ de boîte de dialogue : liste déroulante si le champ
-      a des « options », zone de saisie sinon */
+         a des « options », zone de saisie sinon */
 function dialogFieldHtml(field) {
   const label = escapeHtml(field.label);
   if (field.options) {
     const options = field.options
-      .map((option) => `<option>${escapeHtml(option)}</option>`)
+      .map(
+        (option) =>
+          `<option${option === field.value ? " selected" : ""}>${escapeHtml(
+            option
+          )}</option>`
+      )
       .join("");
     return `<label>${label}<select name="${field.name}">${options}</select></label>`;
   }
@@ -702,7 +803,7 @@ function dialogFieldHtml(field) {
 }
 
 /* Ouvre une boîte de dialogue (remplace prompt et confirm).
-      Renvoie les valeurs saisies { nomDuChamp: valeur }, ou null si on annule. */
+         Renvoie les valeurs saisies { nomDuChamp: valeur }, ou null si on annule. */
 function openDialog({ title, text = "", fields = [], ok = "Valider" }) {
   return new Promise((resolve) => {
     const dialog = document.createElement("dialog");
@@ -712,10 +813,10 @@ function openDialog({ title, text = "", fields = [], ok = "Valider" }) {
     dialog.innerHTML = `<form method="dialog"><h2>${escapeHtml(
       title
     )}</h2>${paragraph}${fieldsHtml}
-         <div class="modal-actions"><button type="button" class="btn btn-outline-success" data-x>Annuler</button>
-         <button class="btn btn-success" value="ok">${escapeHtml(
-           ok
-         )}</button></div></form>`;
+            <div class="modal-actions"><button type="button" class="btn btn-outline-success" data-x>Annuler</button>
+            <button class="btn btn-success" value="ok">${escapeHtml(
+              ok
+            )}</button></div></form>`;
     document.body.append(dialog);
 
     const form = findOne("form", dialog);
@@ -731,12 +832,12 @@ function openDialog({ title, text = "", fields = [], ok = "Valider" }) {
 }
 
 /* =====================================================================
-      PARTIE 7 — Enregistrement dans data.json et data.csv
-   
-      Chrome / Edge : l'utilisateur choisit une fois le dossier « data »
-      (File System Access API), puis chaque changement réécrit les deux fichiers.
-      Sinon : repli sur le localStorage + bouton de téléchargement.
-      ===================================================================== */
+         PARTIE 7 — Enregistrement dans data.json et data.csv
+      
+         Chrome / Edge : l'utilisateur choisit une fois le dossier « data »
+         (File System Access API), puis chaque changement réécrit les deux fichiers.
+         Sinon : repli sur le localStorage + bouton de téléchargement.
+         ===================================================================== */
 
 let isFolderConnected = false; // true = on peut écrire dans le dossier data
 let dataFolder = null; // accès au dossier choisi par l'utilisateur
@@ -753,8 +854,8 @@ function openDatabase() {
 }
 
 /* Lit une valeur enregistrée dans IndexedDB (la petite base de données du navigateur).
-      IndexedDB répond plus tard (de façon asynchrone) : on l'emballe dans une Promise
-      pour pouvoir écrire simplement « await databaseGet(clé) ». */
+         IndexedDB répond plus tard (de façon asynchrone) : on l'emballe dans une Promise
+         pour pouvoir écrire simplement « await databaseGet(clé) ». */
 async function databaseGet(key) {
   const database = await openDatabase();
   return new Promise((resolve, reject) => {
@@ -765,7 +866,7 @@ async function databaseGet(key) {
 }
 
 /* Enregistre une valeur dans IndexedDB sous le nom « key »
-      (« readwrite » = on a le droit d'écrire). */
+         (« readwrite » = on a le droit d'écrire). */
 async function databaseSet(key, value) {
   const database = await openDatabase();
   return new Promise((resolve, reject) => {
@@ -825,7 +926,7 @@ function groupByBuildingAndResource(measures) {
   const groups = new Map();
   measures.forEach((measure) => {
     /* clé unique par couple, ex. « Cours » + « eau ». Le séparateur "\u0000"
-          ne peut apparaître dans aucun nom, donc deux couples ne se confondent jamais. */
+             ne peut apparaître dans aucun nom, donc deux couples ne se confondent jamais. */
     const key = measure.batiment + "\u0000" + measure.ressource;
     if (!groups.has(key)) groups.set(key, []);
     groups.get(key).push(measure);
@@ -899,7 +1000,7 @@ function computeTrend(group) {
 /* --- Écriture du texte JSON avec la mise en page exacte du module C --- */
 
 /* Écrit un texte entre guillemets, au format JSON : Cours devient "Cours".
-      JSON.stringify ajoute aussi un \ devant les guillemets qui sont dans le texte. */
+         JSON.stringify ajoute aussi un \ devant les guillemets qui sont dans le texte. */
 function quoted(value) {
   return JSON.stringify(value);
 }
@@ -910,7 +1011,7 @@ function decimal(number) {
 }
 
 /* Nombre avec 2 décimales, ou le mot null s'il n'y a pas de nombre
-      (null en JSON veut dire « pas de valeur »). */
+         (null en JSON veut dire « pas de valeur »). */
 function decimalOrNull(number) {
   return number == null ? "null" : decimal(number);
 }
@@ -942,7 +1043,7 @@ function buildingJsonLine(building) {
 }
 
 /* Une ligne JSON qui décrit une mesure, avec exactement les mêmes champs
-      et le même ordre que le programme C (fonction exporterJSON). */
+         et le même ordre que le programme C (fonction exporterJSON). */
 function measureJsonLine(m) {
   return `{"id": ${m.id}, "batiment": ${quoted(
     m.batiment
@@ -954,7 +1055,7 @@ function measureJsonLine(m) {
 }
 
 /* Une ligne JSON avec les statistiques d'un groupe (bâtiment + ressource) :
-      nombre de mesures, total, moyenne, min, max et nombre d'alertes. */
+         nombre de mesures, total, moyenne, min, max et nombre d'alertes. */
 function statisticsJsonLine(s) {
   return `{"batiment": ${quoted(s.batiment)}, "ressource": ${quoted(
     s.ressource
@@ -973,7 +1074,7 @@ function trendPointJson(point) {
 }
 
 /* Une ligne JSON avec la tendance d'un groupe (hausse, baisse ou stable)
-      et tous ses points. */
+         et tous ses points. */
 function trendJsonLine(t) {
   const points = t.points.map(trendPointJson).join(", ");
   return `{"batiment": ${quoted(t.batiment)}, "ressource": ${quoted(
@@ -988,10 +1089,10 @@ function trendJsonLine(t) {
 }
 
 /* Construit tout le texte du fichier data.json, ligne par ligne :
-      résumé, bâtiments, mesures, statistiques, puis tendances.
-      Les « ... » devant jsonArrayLines insèrent toutes les lignes renvoyées
-      dans le grand tableau « lines ». À la fin, join("\n") colle les lignes
-      en un seul texte, avec un retour à la ligne entre chacune. */
+         résumé, bâtiments, mesures, statistiques, puis tendances.
+         Les « ... » devant jsonArrayLines insèrent toutes les lignes renvoyées
+         dans le grand tableau « lines ». À la fin, join("\n") colle les lignes
+         en un seul texte, avec un retour à la ligne entre chacune. */
 function buildJsonText(measures) {
   const groups = groupByBuildingAndResource(measures);
   const alertCount = measures.filter((measure) => measure.alerte).length;
@@ -1019,7 +1120,7 @@ function buildJsonText(measures) {
 }
 
 /* Construit le texte du fichier data.csv : la ligne des noms de colonnes,
-      puis une ligne par mesure, champs séparés par des virgules (même format que le C). */
+         puis une ligne par mesure, champs séparés par des virgules (même format que le C). */
 function buildCsvText(measures) {
   const header = "id,batiment,ressource,valeur,date_heure,seuil\n";
   const rows = measures.map(
@@ -1032,7 +1133,7 @@ function buildCsvText(measures) {
 }
 
 /* Construit data.json et data.csv dans le MÊME format que le module C
-      (fonctions exporterJSON et sauvegarderMesures) */
+         (fonctions exporterJSON et sauvegarderMesures) */
 function buildFiles() {
   const measures = state.mesures.map(toModuleCMeasure);
   return { json: buildJsonText(measures), csv: buildCsvText(measures) };
@@ -1041,8 +1142,8 @@ function buildFiles() {
 /* --- Écriture et téléchargement --- */
 
 /* Écrit un texte dans un fichier du dossier connecté.
-      { create: true } : le fichier est créé s'il n'existe pas encore.
-      Il faut fermer (close) pour que le contenu soit vraiment enregistré. */
+         { create: true } : le fichier est créé s'il n'existe pas encore.
+         Il faut fermer (close) pour que le contenu soit vraiment enregistré. */
 async function writeFile(folder, fileName, text) {
   const file = await folder.getFileHandle(fileName, { create: true });
   const writer = await file.createWritable();
@@ -1068,7 +1169,7 @@ function downloadText(text, fileName, type) {
 }
 
 /* Demande à l'utilisateur de choisir (ou de réautoriser) le dossier « data ».
-      Le navigateur exige que cette fonction soit appelée juste après un clic. */
+         Le navigateur exige que cette fonction soit appelée juste après un clic. */
 async function connectDataFolder() {
   try {
     let folder = dataFolder;
@@ -1102,16 +1203,20 @@ async function connectDataFolder() {
 }
 
 /* La fenêtre de choix du dossier ne s'ouvre qu'UNE SEULE FOIS par session
-      d'onglet (jamais à chaque ajout). Ensuite : bouton « Connecter le dossier
-      data » sur la page Données. */
+         d'onglet (jamais à chaque ajout). Ensuite : bouton « Connecter le dossier
+         data » sur la page Données. */
 async function askForFolderOnce() {
   let alreadyAsked = false;
   try {
     alreadyAsked = !!sessionStorage.getItem(FOLDER_ASKED_KEY);
     sessionStorage.setItem(FOLDER_ASKED_KEY, "1");
   } catch {}
-  if (alreadyAsked) return;
-  showToast("Sélectionnez le dossier « data » (une seule fois).");
+  /* Dossier déjà choisi mais permission perdue (rechargement de la page) :
+           simple clic d'autorisation, on le redemande à chaque enregistrement. */
+  if (alreadyAsked && folderStatus !== "prompt") return;
+  if (folderStatus === "none") {
+    showToast("Sélectionnez le dossier « data » (une seule fois).");
+  }
   await connectDataFolder();
 }
 
@@ -1134,22 +1239,26 @@ async function saveData() {
   try {
     localStorage.setItem(
       MEASURES_KEY,
-      JSON.stringify({ v: state.generated, m: state.mesures })
+      JSON.stringify({
+        v: state.generated,
+        m: state.mesures,
+        b: state.batiments,
+      })
     );
   } catch {}
   return true;
 }
 
 /* =====================================================================
-      PARTIE 8 — Chargement et vérification des données
-      ===================================================================== */
+         PARTIE 8 — Chargement et vérification des données
+         ===================================================================== */
 
 /* Charge le fichier data.json et le traduit pour le site.
-   
-      fetch demande le fichier au serveur ; { cache: "no-store" } oblige à relire
-      la dernière version au lieu d'une ancienne copie gardée par le navigateur.
-      En cas de problème (fichier absent, JSON abîmé...), on affiche un message
-      d'erreur et on renvoie null : la page sait alors qu'il n'y a pas de données. */
+      
+         fetch demande le fichier au serveur ; { cache: "no-store" } oblige à relire
+         la dernière version au lieu d'une ancienne copie gardée par le navigateur.
+         En cas de problème (fichier absent, JSON abîmé...), on affiche un message
+         d'erreur et on renvoie null : la page sait alors qu'il n'y a pas de données. */
 async function loadData() {
   try {
     const response = await fetch(DATA_URL, { cache: "no-store" });
@@ -1172,22 +1281,22 @@ async function loadData() {
 }
 
 /* Mise à jour en temps réel : relit data.json toutes les quelques secondes
-      (changements faits par le programme C ou un autre onglet) et écoute le
-      localStorage (changements faits dans un autre onglet sans dossier connecté).
-      « isBusy() » permet de ne rien changer pendant qu'une modification est en cours.
-      « onChange(nouveauxIds) » est appelée seulement si les mesures ont changé. */
+         (changements faits par le programme C ou un autre onglet) et écoute le
+         localStorage (changements faits dans un autre onglet sans dossier connecté).
+         « isBusy() » permet de ne rien changer pendant qu'une modification est en cours.
+         « onChange(nouveauxIds) » est appelée seulement si les mesures ont changé. */
 const LIVE_INTERVAL_MS = 3000;
 
 /* Lance la mise à jour automatique (voir l'explication juste au-dessus).
-      lastText garde le dernier contenu lu : si le fichier n'a pas changé,
-      on ne fait rien. */
+         lastText garde le dernier contenu lu : si le fichier n'a pas changé,
+         on ne fait rien. */
 function startLiveUpdates(onChange, isBusy) {
   let lastText = null;
   let lastData = null;
 
   /* Recharge les données et appelle onChange seulement si les mesures ont
-        vraiment changé. On compare la « signature » avant / après, et on donne à
-        onChange la liste des identifiants nouveaux (pour les mettre en évidence). */
+           vraiment changé. On compare la « signature » avant / après, et on donne à
+           onChange la liste des identifiants nouveaux (pour les mettre en évidence). */
   function refreshFrom(data) {
     const before = computeSignature(state.mesures);
     const oldIds = new Set(state.mesures.map((measure) => measure.id));
@@ -1200,8 +1309,8 @@ function startLiveUpdates(onChange, isBusy) {
   }
 
   /* Relit data.json. On ne fait rien si l'onglet est caché (document.hidden),
-        si une modification est en cours, ou si le texte n'a pas changé.
-        La toute première lecture sert seulement de point de départ. */
+           si une modification est en cours, ou si le texte n'a pas changé.
+           La toute première lecture sert seulement de point de départ. */
   async function checkFile() {
     if (document.hidden || isBusy()) return;
     try {
@@ -1221,11 +1330,7 @@ function startLiveUpdates(onChange, isBusy) {
   }
 
   window.addEventListener("storage", (event) => {
-    const watchedKeys = [
-      MEASURES_KEY,
-      ADDED_BUILDINGS_KEY,
-      DELETED_BUILDINGS_KEY,
-    ];
+    const watchedKeys = [MEASURES_KEY];
     if (!lastData || isBusy() || !watchedKeys.includes(event.key)) return;
     refreshFrom(lastData);
   });
@@ -1238,7 +1343,7 @@ function startLiveUpdates(onChange, isBusy) {
 }
 
 /* Une mesure valide : ressource connue, bâtiment renseigné, valeur positive,
-      date correcte et identifiant jamais vu */
+         date correcte et identifiant jamais vu */
 function isValidMeasure(measure, seenIds) {
   return (
     measure &&
@@ -1253,8 +1358,8 @@ function isValidMeasure(measure, seenIds) {
 }
 
 /* Garde seulement les mesures valides (voir isValidMeasure) et complète
-      chacune avec son unité (kWh, m³...) et son état d'alerte.
-      seenIds retient les identifiants déjà vus, pour écarter les doublons. */
+         chacune avec son unité (kWh, m³...) et son état d'alerte.
+         seenIds retient les identifiants déjà vus, pour écarter les doublons. */
 function keepValidMeasures(measures) {
   const seenIds = new Set();
   const validMeasures = measures.filter((measure) => {
@@ -1271,21 +1376,14 @@ function keepValidMeasures(measures) {
   }));
 }
 
-/* Ajoute les bâtiments créés dans le navigateur à ceux du fichier */
-function addBuildingsFromBrowser(buildings) {
-  const newBuildings = readStoredList(ADDED_BUILDINGS_KEY).filter(
-    (added) => !buildings.some((building) => building.nom === added.nom)
-  );
-  return [...buildings, ...newBuildings];
-}
-
-/* Reprend les mesures gardées dans le navigateur, si elles concernent bien
-      la même version de data.json */
-function restoreMeasuresFromBrowser() {
+/* Reprend les mesures ET les bâtiments gardés dans le navigateur, si elles
+         concernent bien la même version de data.json */
+function restoreFromBrowser() {
   try {
     const saved = JSON.parse(localStorage.getItem(MEASURES_KEY) || "null");
     if (saved && saved.v === state.generated && Array.isArray(saved.m)) {
       state.mesures = saved.m;
+      if (Array.isArray(saved.b)) state.batiments = saved.b;
     }
   } catch {}
 }
@@ -1293,24 +1391,12 @@ function restoreMeasuresFromBrowser() {
 /* Remplit « state » à partir du fichier, en écartant les mesures invalides */
 function prepareState(data) {
   state.batiments = data.batiments || [];
-  if (!isFolderConnected)
-    state.batiments = addBuildingsFromBrowser(state.batiments);
   state.precedent = data.precedent || {};
   state.generated = data.genere_le || "";
   state.mesures = keepValidMeasures(data.mesures);
   const rejectedCount = data.mesures.length - state.mesures.length;
 
-  if (!isFolderConnected) restoreMeasuresFromBrowser();
-
-  const deletedNames = isFolderConnected
-    ? []
-    : readStoredList(DELETED_BUILDINGS_KEY);
-  state.batiments = state.batiments.filter(
-    (building) => !deletedNames.includes(building.nom)
-  );
-  state.mesures = state.mesures.filter(
-    (measure) => !deletedNames.includes(measure.batiment)
-  );
+  if (!isFolderConnected) restoreFromBrowser();
 
   /* bâtiments présents dans les mesures mais absents de la liste */
   state.mesures.forEach((measure) => {
@@ -1334,8 +1420,8 @@ function prepareState(data) {
 }
 
 /* =====================================================================
-      PARTIE 9 — Tendances et KPI
-      ===================================================================== */
+         PARTIE 9 — Tendances et KPI
+         ===================================================================== */
 
 /* Total de la période précédente, pour certains bâtiments (ou tous par défaut) */
 function previousTotal(resource, buildingNames) {
@@ -1378,15 +1464,15 @@ function fillKpiCard(selector, resource, buildingNames) {
 }
 
 /* =====================================================================
-      PARTIE 10 — Graphiques (Chart.js est chargé seulement si besoin)
-      ===================================================================== */
+         PARTIE 10 — Graphiques (Chart.js est chargé seulement si besoin)
+         ===================================================================== */
 
 const chartsById = {};
 const chartDrawFunctions = []; // pour tout redessiner quand le thème change
 let chartJsLoading = null;
 
 /* Redessine tous les graphiques, par exemple après un changement de thème
-      (clair / sombre), pour qu'ils reprennent les bonnes couleurs. */
+         (clair / sombre), pour qu'ils reprennent les bonnes couleurs. */
 function redrawAllCharts() {
   chartDrawFunctions.forEach((draw) => draw());
 }
@@ -1395,13 +1481,13 @@ function redrawAllCharts() {
 function loadChartJs() {
   if (window.Chart) return Promise.resolve(true);
   /* « ||= » : on ne crée la promesse que la première fois, les appels suivants
-        réutilisent la même (la bibliothèque n'est donc téléchargée qu'une fois) */
+           réutilisent la même (la bibliothèque n'est donc téléchargée qu'une fois) */
   chartJsLoading ||= loadScript("https://cdn.jsdelivr.net/npm/chart.js@4.4.1");
   return chartJsLoading;
 }
 
 /* Ajoute une balise <script src="..."> à la page.
-      Renvoie une promesse : true quand le fichier est chargé, false en cas d'échec. */
+         Renvoie une promesse : true quand le fichier est chargé, false en cas d'échec. */
 function loadScript(src) {
   return new Promise((resolve) => {
     const script = document.createElement("script");
@@ -1421,10 +1507,10 @@ function replaceWithCanvas(selector, canvasId) {
 }
 
 /* Crée un graphique. buildConfig est une fonction : elle est rappelée à chaque
-      dessin pour relire les couleurs du thème actuel. */
+         dessin pour relire les couleurs du thème actuel. */
 function createChart(canvasId, buildConfig) {
   /* Dessine (ou redessine) le graphique dans le <canvas>. Si un ancien graphique
-        existe déjà, on le détruit d'abord pour ne pas en empiler deux. */
+           existe déjà, on le détruit d'abord pour ne pas en empiler deux. */
   function draw() {
     const canvas = document.getElementById(canvasId);
     if (!canvas) return;
@@ -1434,7 +1520,10 @@ function createChart(canvasId, buildConfig) {
       return;
     }
     chartsById[canvasId]?.destroy();
-    Chart.defaults.font.family = "Inter, Arial, sans-serif";
+    Chart.defaults.font.family =
+      window.I18N && I18N.lang === "ar"
+        ? '"Noto Sans Arabic", "Segoe UI", Tahoma, Arial, sans-serif'
+        : "Inter, Arial, sans-serif";
     Chart.defaults.color = getCssVariable("--soft") || "#5d777c";
     chartsById[canvasId] = new Chart(canvas, buildConfig());
   }
@@ -1443,7 +1532,7 @@ function createChart(canvasId, buildConfig) {
 }
 
 /* Courbes : une ligne par ressource, un point par jour.
-      L'eau a son propre axe à droite car elle se mesure en m³ et non en kWh. */
+         L'eau a son propre axe à droite car elle se mesure en m³ et non en kWh. */
 function lineChartConfig(measures) {
   const days = [
     ...new Set(measures.map((measure) => measure.date.slice(0, 10))),
@@ -1453,7 +1542,7 @@ function lineChartConfig(measures) {
     const resourceMeasures = filterByResource(measures, resource);
     const color = getCssVariable(RESOURCES[resource].cssColor);
     return {
-      label: resource,
+      label: t(resource), // nom affiché dans l'infobulle (traduit)
       data: days.map((day) =>
         sumValues(resourceMeasures.filter((m) => m.date.startsWith(day)))
       ),
@@ -1507,11 +1596,13 @@ function barChartConfig(buildingNames) {
   });
 
   /* Texte de la bulle qui apparaît au survol d'une barre,
-        ex : « Eau : 540 m³ » (la vraie valeur, pas le pourcentage). */
+           ex : « Eau : 540 m³ » (la vraie valeur, pas le pourcentage). */
   function tooltipLabel(context) {
     const resource = context.dataset.label;
     const value = context.dataset.raw[context.dataIndex];
-    return `${resource} : ${formatNumber(value)} ${RESOURCES[resource].unit}`;
+    return `${t(resource)} : ${formatNumber(value)} ${
+      RESOURCES[resource].unit
+    }`;
   }
 
   return {
@@ -1535,7 +1626,7 @@ function barChartConfig(buildingNames) {
 }
 
 /* Colore un anneau (donut) et écrit les pourcentages dans sa légende.
-      values contient une valeur par ressource, dans l'ordre de RESOURCES. */
+         values contient une valeur par ressource, dans l'ordre de RESOURCES. */
 function fillDonut(donut, values) {
   const total = values.reduce((sum, value) => sum + value, 0) || 1;
   const colors = Object.values(RESOURCES);
@@ -1555,9 +1646,9 @@ function fillDonut(donut, values) {
 }
 
 /* =====================================================================
-      PARTIE 11 — Sélecteur de période
-      Les dates sont calculées à partir d'AUJOURD'HUI : toujours à jour.
-      ===================================================================== */
+         PARTIE 11 — Sélecteur de période
+         Les dates sont calculées à partir d'AUJOURD'HUI : toujours à jour.
+         ===================================================================== */
 
 const PERIOD_NAMES = {
   all: "Toutes les périodes",
@@ -1575,7 +1666,7 @@ function toIsoDate(date) {
 }
 
 /* Ajoute (ou enlève, si days est négatif) des jours à une date « AAAA-MM-JJ ».
-      On se place à midi pour éviter les erreurs lors des changements d'heure. */
+         On se place à midi pour éviter les erreurs lors des changements d'heure. */
 function addDays(isoDate, days) {
   const date = new Date(isoDate + "T12:00:00");
   date.setDate(date.getDate() + days);
@@ -1607,7 +1698,7 @@ function getPresetDates(preset) {
 }
 
 /* Code HTML du sélecteur de période : le bouton, puis la fenêtre qui
-      s'ouvre avec les périodes toutes prêtes et les deux champs de date. */
+         s'ouvre avec les périodes toutes prêtes et les deux champs de date. */
 function periodPickerHtml() {
   const chips = Object.entries(PERIOD_NAMES)
     .map(
@@ -1615,17 +1706,17 @@ function periodPickerHtml() {
     )
     .join("");
   return `<div class="period">
-     <button type="button" class="period-pill" id="pBtn" aria-haspopup="true" aria-expanded="false">
-       <span>📅</span><span id="pLabel">Toutes les périodes</span><span class="p-caret">▾</span>
-     </button>
-     <div class="period-pop" id="pPop" hidden>
-       <div class="period-chips">${chips}</div>
-       <div class="period-dates">
-         <label>Du<input type="date" id="pFrom" /></label>
-         <label>Au<input type="date" id="pTo" /></label>
-       </div>
-       <div class="period-foot"><span id="pToday"></span><b id="pCount"></b></div>
-     </div></div>`;
+        <button type="button" class="period-pill" id="pBtn" aria-haspopup="true" aria-expanded="false">
+          <span>📅</span><span id="pLabel">Toutes les périodes</span><span class="p-caret">▾</span>
+        </button>
+        <div class="period-pop" id="pPop" hidden>
+          <div class="period-chips">${chips}</div>
+          <div class="period-dates">
+            <label>Du<input type="date" id="pFrom" /></label>
+            <label>Au<input type="date" id="pTo" /></label>
+          </div>
+          <div class="period-foot"><span id="pToday"></span><b id="pCount"></b></div>
+        </div></div>`;
 }
 
 /* Place le sélecteur à côté du titre de la page (à gauche du bouton Exporter s'il existe) */
@@ -1646,10 +1737,10 @@ function addPeriodPicker() {
 }
 
 /* Rend le sélecteur fonctionnel.
-      isLive = true  : filtre sans recharger, en appelant onChange.
-      isLive = false : la période est gardée dans l'adresse (?p= / ?from= / ?to=)
-                       et la page se recharge.
-      Renvoie un objet avec deux fonctions : isInPeriod(mesure) et showCount(nombre). */
+         isLive = true  : filtre sans recharger, en appelant onChange.
+         isLive = false : la période est gardée dans l'adresse (?p= / ?from= / ?to=)
+                          et la page se recharge.
+         Renvoie un objet avec deux fonctions : isInPeriod(mesure) et showCount(nombre). */
 function setupPeriodPicker(isLive, onChange) {
   const button = findOne("#pBtn");
   const popup = findOne("#pPop");
@@ -1683,7 +1774,7 @@ function setupPeriodPicker(isLive, onChange) {
   }
 
   /* Texte affiché sur le bouton : le nom de la période
-        (ex : « Ce mois-ci »), ou les dates choisies à la main. */
+           (ex : « Ce mois-ci »), ou les dates choisies à la main. */
   function getLabel() {
     if (preset !== "custom") return PERIOD_NAMES[preset];
     const [from, to] = getDates();
@@ -1725,7 +1816,7 @@ function setupPeriodPicker(isLive, onChange) {
   }
 
   /* Applique la période choisie : soit on filtre tout de suite (isLive),
-        soit on recharge la page avec la période dans l'adresse. */
+           soit on recharge la page avec la période dans l'adresse. */
   function applyPeriod() {
     updateDisplay();
     if (isLive) onChange();
@@ -1762,7 +1853,7 @@ function setupPeriodPicker(isLive, onChange) {
   function updateToday() {
     findOne("#pToday").textContent =
       "Aujourd'hui : " +
-      new Date().toLocaleDateString("fr-FR", {
+      new Date().toLocaleDateString(DATE_LOCALE, {
         weekday: "short",
         day: "numeric",
         month: "long",
@@ -1785,7 +1876,7 @@ function setupPeriodPicker(isLive, onChange) {
 
   return {
     /* true si la mesure est dans la période choisie.
-          On compare seulement le jour (les 10 premiers caractères de la date). */
+             On compare seulement le jour (les 10 premiers caractères de la date). */
     isInPeriod(measure) {
       const [from, to] = getDates();
       const day = measure.date.slice(0, 10);
@@ -1800,14 +1891,14 @@ function setupPeriodPicker(isLive, onChange) {
 }
 
 /* =====================================================================
-      PARTIE 12 — Une fonction par page du site
-      Le nom de chaque page vient de l'attribut data-page de <body>.
-      ===================================================================== */
+         PARTIE 12 — Une fonction par page du site
+         Le nom de chaque page vient de l'attribut data-page de <body>.
+         ===================================================================== */
 
 /* ---------- Page : Tableau de bord (index.html) ---------- */
 
 /* Code HTML d'une alerte du tableau de bord : bâtiment, ressource, valeur,
-      seuil et date. escapeHtml protège contre les noms qui contiendraient du HTML. */
+         seuil et date. escapeHtml protège contre les noms qui contiendraient du HTML. */
 function alertItemHtml(measure) {
   const title = `${escapeHtml(measure.batiment)} — ${escapeHtml(
     measure.ressource
@@ -1820,7 +1911,7 @@ function alertItemHtml(measure) {
 }
 
 /* Liste des mesures en alerte, de la plus récente à la plus ancienne.
-      localeCompare compare deux textes ; b avant a = ordre inverse (plus récent d'abord). */
+         localeCompare compare deux textes ; b avant a = ordre inverse (plus récent d'abord). */
 function getAlertsNewestFirst(measures) {
   return measures
     .filter((measure) => measure.alerte)
@@ -1828,8 +1919,8 @@ function getAlertsNewestFirst(measures) {
 }
 
 /* Page Tableau de bord : remplit les 3 cartes KPI (électricité, eau,
-      chauffage), la carte des anomalies, la liste des 3 dernières alertes et
-      la courbe de consommation. */
+         chauffage), la carte des anomalies, la liste des 3 dernières alertes et
+         la courbe de consommation. */
 function showDashboardPage() {
   fillKpiCard(".metric.green", "Électricité");
   fillKpiCard(".metric.blue", "Eau");
@@ -1865,7 +1956,7 @@ function showDashboardPage() {
 /* Trouve le panneau (.panel) dont le titre h2 contient le texte demandé. */
 function findPanelByTitle(titleText) {
   return findAll(".panel").find((panel) =>
-    findOne("h2", panel)?.textContent.includes(titleText)
+    srcText(findOne("h2", panel) || panel).includes(titleText)
   );
 }
 
@@ -1877,8 +1968,12 @@ function applyChartsSearch() {
   const query = normalizeText(searchText);
   state.mesures = state.mesures.filter(
     (measure) =>
-      normalizeText(measure.batiment).includes(query) ||
-      normalizeText(measure.ressource).includes(query)
+      normalizeText(measure.batiment + " " + t(measure.batiment)).includes(
+        query
+      ) ||
+      normalizeText(measure.ressource + " " + t(measure.ressource)).includes(
+        query
+      )
   );
   findOne(".page-title").insertAdjacentHTML(
     "afterend",
@@ -1892,7 +1987,7 @@ function applyChartsSearch() {
 }
 
 /* Les kWh et les m³ ne s'additionnent pas : l'anneau ne compte que les kWh,
-      et le total de l'eau est écrit à part dans la légende. */
+         et le total de l'eau est écrit à part dans la légende. */
 function fillResourceDonut(donut) {
   const totals = RESOURCE_NAMES.map((resource) =>
     sumValues(filterByResource(state.mesures, resource))
@@ -1920,7 +2015,7 @@ function fillResourceDonut(donut) {
 }
 
 /* Anneau des alertes : combien d'alertes pour chaque ressource,
-      et le total au centre. */
+         et le total au centre. */
 function fillAlertDonut(donut) {
   const alerts = state.mesures.filter((measure) => measure.alerte);
   fillDonut(
@@ -1941,8 +2036,7 @@ function setupChartViews() {
   };
   findAll(".chart-tabs .tab").forEach((tab) =>
     tab.addEventListener("click", () => {
-      const visiblePanels =
-        views[tab.textContent.trim()] || views["Vue globale"];
+      const visiblePanels = views[srcText(tab).trim()] || views["Vue globale"];
       panels.forEach(
         (panel, index) => (panel.hidden = !visiblePanels.includes(index))
       );
@@ -2001,7 +2095,7 @@ function fillTrendPanel() {
 }
 
 /* Page Graphiques : applique la période et la recherche, puis remplit les
-      anneaux, les barres par bâtiment, la courbe, le classement et la tendance. */
+         anneaux, les barres par bâtiment, la courbe, le classement et la tendance. */
 function showChartsPage() {
   addPeriodPicker();
   const period = setupPeriodPicker(false);
@@ -2042,49 +2136,76 @@ function electricityOfBuilding(name) {
   return sumValues(filterByResource(measuresOfBuilding(name), "Électricité"));
 }
 
-/* Code HTML de la carte d'un bâtiment (type, nom, lien « Détails »).
-      Les chiffres sont mis à 0 ici, puis remplis par fillBuildingCard. */
-function buildingCardHtml(building) {
-  const type = escapeHtml((building.type || "").toUpperCase());
+const BUILDING_TYPE_LIST = ["Enseignement", "Résidence", "Administration"];
+
+/* Icône et photo des bâtiments connus ; les autres reçoivent une photo selon leur type */
+const BUILDING_ICONS = {
+  Cours: "ϟ",
+  Laboratoires: "♒",
+  Bibliothèque: "▤",
+  Résidence: "♧",
+  Administration: "▦",
+};
+const BUILDING_PHOTOS = {
+  Cours: "photo-one",
+  Laboratoires: "photo-two",
+  Bibliothèque: "photo-three",
+  Résidence: "photo-four",
+  Administration: "photo-five",
+};
+
+/* Mêmes icônes que les boutons Modifier / Supprimer de la page Données */
+const EDIT_ICON_SVG =
+  '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.375 2.625a1 1 0 0 1 3 3l-9.013 9.014a2 2 0 0 1-.853.505l-2.873.84a.5.5 0 0 1-.62-.62l.84-.873a2 2 0 0 1 .506-.852z"/></svg>';
+const DELETE_ICON_SVG =
+  '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>';
+
+/* Total d'électricité (kWh) consommé par un bâtiment. */
+function electricityOfBuilding(name) {
+  return sumValues(filterByResource(measuresOfBuilding(name), "Électricité"));
+}
+
+/* Classe CSS de la photo d'un bâtiment */
+function buildingPhotoClass(building, index) {
+  if (BUILDING_PHOTOS[building.nom]) return BUILDING_PHOTOS[building.nom];
+  if (building.type === "Résidence") return "photo-four";
+  if (building.type === "Administration") return "photo-five";
+  return ["photo-one", "photo-two", "photo-three"][index % 3];
+}
+
+/* « 3 étages · 1 200 m² » (vide si on ne connaît ni l'un ni l'autre) */
+function buildingMetaText(building) {
+  const parts = [];
+  if (Number.isFinite(building.etages)) {
+    parts.push(`${building.etages} ${plural(building.etages, "étage")}`);
+  }
+  if (Number.isFinite(building.surface)) {
+    parts.push(`${formatNumber(building.surface)} m²`);
+  }
+  return parts.join(" · ");
+}
+
+/* Code HTML de la carte d'un bâtiment : photo, nom, boutons Modifier / Supprimer,
+         lien « Détails ». Les chiffres sont mis à 0 ici, puis remplis par fillBuildingCard. */
+function buildingCardHtml(building, index) {
   const name = escapeHtml(building.nom);
+  const type = escapeHtml((building.type || "").toUpperCase());
+  const icon = BUILDING_ICONS[building.nom] || "▦";
   const link = `detail.html?b=${encodeURIComponent(building.nom)}`;
-  return `<article class="building-card"><div class="building-photo photo-five"><span>${type}</span></div><div class="building-info"><h2>▦ ${name}</h2><div class="building-value">0 <small>kWh</small><span></span></div><div class="mini-progress"><i style="width:0%"></i></div><a href="${link}" class="text-link">Détails →</a></div></article>`;
+  const meta = buildingMetaText(building);
+  return `<article class="building-card" data-name="${name}" data-type="${escapeHtml(
+    building.type || ""
+  )}"><div class="building-photo ${buildingPhotoClass(
+    building,
+    index
+  )}"><span>${type}</span></div><div class="building-info"><div class="building-head"><h2>${icon} ${name}</h2><div class="building-actions"><button type="button" class="row-action" data-act="edit" title="Modifier ce bâtiment" aria-label="Modifier ${name}">${EDIT_ICON_SVG}</button><button type="button" class="row-action delete-row" data-act="del" title="Supprimer ce bâtiment" aria-label="Supprimer ${name}">${DELETE_ICON_SVG}</button></div></div><div class="building-value">0 <small>kWh</small><span></span></div><div class="mini-progress"><i style="width:0%"></i></div>${
+    meta ? `<p class="muted building-meta">${escapeHtml(meta)}</p>` : ""
+  }<a href="${link}" class="text-link">Détails →</a></div></article>`;
 }
 
-/* Ajoute une carte pour chaque bâtiment créé par l'utilisateur */
-function addUserBuildingCards() {
-  const userBuildings = isFolderConnected
-    ? state.batiments.filter((b) => !BUILDINGS_IN_HTML.includes(b.nom))
-    : readStoredList(ADDED_BUILDINGS_KEY);
-  userBuildings.forEach((building) =>
-    findOne(".total-card").insertAdjacentHTML(
-      "beforebegin",
-      buildingCardHtml(building)
-    )
-  );
-}
-
-/* Remplit une carte avec les chiffres du bâtiment (ou la retire s'il a été supprimé) */
+/* Remplit une carte avec les chiffres du bâtiment */
 function fillBuildingCard(card, highestElectricity) {
-  const titleWithoutIcon = findOne("h2", card).textContent.replace(
-    /^\S+\s+/,
-    ""
-  );
-  const title = titleWithoutIcon.trim();
-  const name = BUILDING_FROM_C[title] || title; // le HTML écrit « Cours », le site « Cours »
-  const building = state.batiments.find((candidate) => candidate.nom === name);
-  if (!building) {
-    card.remove();
-    return;
-  }
-  card.dataset.type = building.type || "";
-  card.dataset.name = name;
-  if (!findOne(".del-bat", card)) {
-    findOne(".building-info", card).insertAdjacentHTML(
-      "beforeend",
-      '<button type="button" class="del-bat btn btn-sm btn-outline-danger" title="Supprimer ce bâtiment">🗑 Supprimer</button>'
-    );
-  }
+  const name = card.dataset.name;
   const electricity = electricityOfBuilding(name);
   findOne(".building-value", card).innerHTML = `${formatNumber(
     electricity
@@ -2097,12 +2218,10 @@ function fillBuildingCard(card, highestElectricity) {
   );
   findOne(".mini-progress i", card).style.width =
     (electricity / highestElectricity) * 100 + "%";
-  findOne("a.text-link", card).href =
-    "detail.html?b=" + encodeURIComponent(name);
 }
 
 /* Carte « Électricité totale » : la somme de tous les bâtiments et
-      la variation par rapport à la période précédente. */
+         la variation par rapport à la période précédente. */
 function fillTotalCard() {
   const total = sumValues(filterByResource(state.mesures, "Électricité"));
   findOne(".total-card h2").textContent = "Électricité totale";
@@ -2112,21 +2231,190 @@ function fillTotalCard() {
   showTrend(findOne(".total-card p"), total, previousTotal("Électricité"));
 }
 
-/* Sans dossier connecté, les bâtiments supprimés sont notés dans le navigateur */
-function rememberDeletedBuilding(name) {
-  const deletedNames = readStoredList(DELETED_BUILDINGS_KEY);
-  if (!deletedNames.includes(name)) deletedNames.push(name);
-  localStorage.setItem(DELETED_BUILDINGS_KEY, JSON.stringify(deletedNames));
-
-  const addedBuildings = readStoredList(ADDED_BUILDINGS_KEY).filter(
-    (building) => building.nom !== name
+/* (Re)dessine toutes les cartes à partir de state.batiments.
+         La barre de progression compare au bâtiment qui consomme le plus. */
+function renderBuildingCards() {
+  findAll("#buildingGrid .building-card:not(.total-card)").forEach((card) =>
+    card.remove()
   );
-  localStorage.setItem(ADDED_BUILDINGS_KEY, JSON.stringify(addedBuildings));
+  findOne("#buildingGrid .total-card").insertAdjacentHTML(
+    "beforebegin",
+    state.batiments.map(buildingCardHtml).join("")
+  );
+  const highestElectricity =
+    Math.max(0, ...state.batiments.map((b) => electricityOfBuilding(b.nom))) ||
+    1;
+  findAll("#buildingGrid .building-card:not(.total-card)").forEach((card) =>
+    fillBuildingCard(card, highestElectricity)
+  );
+  fillTotalCard();
+}
+
+/* Message après un enregistrement : dit clairement si data.json a été modifié */
+function notifyBuildingSaved(text) {
+  if (isFolderConnected) {
+    showToast(`${text} (data.json et data.csv mis à jour).`);
+  } else {
+    showToast(
+      `${text} dans le navigateur seulement : data.json n'a PAS été modifié (dossier data non connecté).`,
+      "alert"
+    );
+  }
+}
+
+/* Vérifie le nom d'un bâtiment. Renvoie un message d'erreur, ou "".
+         currentName : le nom actuel quand on modifie (il ne compte pas comme doublon). */
+function checkBuildingName(name, currentName = null) {
+  if (!name) return "Le nom est obligatoire.";
+  const lowerName = name.toLowerCase();
+  const isDuplicate = state.batiments.some(
+    (b) => b.nom !== currentName && b.nom.toLowerCase() === lowerName
+  );
+  if (isDuplicate) return "Ce bâtiment existe déjà.";
+  if (/[,"\n\r]/.test(name) || name.length > 49) {
+    return "Nom invalide : pas de virgule ni de guillemet, 49 caractères max.";
+  }
+  return "";
+}
+
+/* Champs du formulaire Ajouter / Modifier un bâtiment */
+function buildingDialogFields(building) {
+  return [
+    { name: "nom", label: "Nom du bâtiment", value: building.nom ?? "" },
+    {
+      name: "type",
+      label: "Type",
+      options: BUILDING_TYPE_LIST,
+      value: building.type,
+    },
+    {
+      name: "etages",
+      label: "Nombre d'étages",
+      type: "number",
+      min: 1,
+      value: building.etages ?? "",
+      required: false,
+    },
+    {
+      name: "surface",
+      label: "Surface (m²)",
+      type: "number",
+      min: 1,
+      value: building.surface ?? "",
+      required: false,
+    },
+  ];
+}
+
+/* Un champ numérique facultatif : vide = pas d'information (null) */
+function optionalNumber(text) {
+  const trimmed = String(text ?? "").trim();
+  return trimmed === "" || !Number.isFinite(Number(trimmed))
+    ? null
+    : Number(trimmed);
+}
+
+/* Bouton « Nouveau bâtiment » : formulaire, vérification du nom, enregistrement. */
+async function addBuilding() {
+  const answers = await openDialog({
+    title: "Nouveau bâtiment",
+    ok: "Créer",
+    fields: buildingDialogFields({
+      type: BUILDING_TYPE_LIST[0],
+      etages: 1,
+      surface: 500,
+    }),
+  });
+  if (!answers) return false;
+
+  const name = answers.nom.trim();
+  const errorMessage = checkBuildingName(name);
+  if (errorMessage) {
+    showToast(errorMessage, "alert");
+    return false;
+  }
+
+  const building = {
+    nom: name,
+    type: answers.type,
+    etages: optionalNumber(answers.etages),
+    surface: optionalNumber(answers.surface),
+  };
+  const buildingsBackup = state.batiments;
+  state.batiments = [...state.batiments, building];
+  if (!(await saveData())) {
+    state.batiments = buildingsBackup; // échec : on annule
+    return false;
+  }
+  logActivity("ajout", `Création du bâtiment « ${building.nom} »`);
+  notifyBuildingSaved(`Bâtiment « ${building.nom} » ajouté`);
+  return true;
+}
+
+/* Modifie un bâtiment (nom, type, étages, surface). Si le nom change, ses
+         mesures suivent. Si l'enregistrement échoue, tout est remis comme avant. */
+async function editBuilding(name) {
+  const building = state.batiments.find((b) => b.nom === name);
+  if (!building) return false;
+
+  const answers = await openDialog({
+    title: `Modifier « ${name} »`,
+    ok: "Enregistrer",
+    fields: buildingDialogFields(building),
+  });
+  if (!answers) return false;
+
+  const newName = answers.nom.trim();
+  const errorMessage = checkBuildingName(newName, name);
+  if (errorMessage) {
+    showToast(errorMessage, "alert");
+    return false;
+  }
+
+  const backup = {
+    batiments: state.batiments,
+    mesures: state.mesures,
+    precedent: state.precedent,
+  };
+  state.batiments = state.batiments.map((b) =>
+    b === building
+      ? {
+          ...b,
+          nom: newName,
+          type: answers.type,
+          etages: optionalNumber(answers.etages),
+          surface: optionalNumber(answers.surface),
+        }
+      : b
+  );
+  if (newName !== name) {
+    state.mesures = state.mesures.map((m) =>
+      m.batiment === name ? { ...m, batiment: newName } : m
+    );
+    state.precedent = { ...state.precedent };
+    if (state.precedent[name]) {
+      state.precedent[newName] = state.precedent[name];
+      delete state.precedent[name];
+    }
+  }
+
+  if (!(await saveData())) {
+    Object.assign(state, backup); // échec : on annule
+    return false;
+  }
+  logActivity(
+    "modif",
+    newName === name
+      ? `Modification du bâtiment « ${name} »`
+      : `Modification du bâtiment « ${name} » (renommé « ${newName} »)`
+  );
+  notifyBuildingSaved(`Bâtiment « ${newName} » modifié`);
+  return true;
 }
 
 /* Supprime un bâtiment et toutes ses mesures, après confirmation.
-      On garde une copie (backup) des données avant : si l'enregistrement échoue,
-      on remet tout comme avant pour ne rien perdre. */
+         On garde une copie (backup) des données avant : si l'enregistrement échoue,
+         on remet tout comme avant pour ne rien perdre. */
 async function deleteBuilding(name) {
   const measureCount = measuresOfBuilding(name).length;
   const confirmed = await openDialog({
@@ -2134,33 +2422,28 @@ async function deleteBuilding(name) {
     text: `Le bâtiment et ses ${measureCount} mesure(s) seront supprimés.`,
     ok: "Supprimer",
   });
-  if (!confirmed) return;
+  if (!confirmed) return false;
 
   const measuresBackup = state.mesures;
   const buildingsBackup = state.batiments;
   state.mesures = state.mesures.filter((m) => m.batiment !== name);
   state.batiments = state.batiments.filter((b) => b.nom !== name);
 
-  const saved = await saveData();
-  if (!saved) {
+  if (!(await saveData())) {
     state.mesures = measuresBackup; // échec : on annule
     state.batiments = buildingsBackup;
-    return;
+    return false;
   }
-  if (!isFolderConnected) rememberDeletedBuilding(name);
   logActivity(
     "suppression",
     `Suppression du bâtiment « ${name} » et de ses ${measureCount} mesure(s)`
   );
-  showToast(
-    isFolderConnected
-      ? "Bâtiment supprimé (data.json et data.csv mis à jour)."
-      : "Bâtiment supprimé."
-  );
-  setTimeout(() => location.reload(), 600);
+  notifyBuildingSaved(`Bâtiment « ${name} » supprimé`);
+  return true;
 }
 
-/* Recherche et filtre par type */
+/* Recherche et filtre par type. Renvoie la fonction qui applique les filtres
+         (à rappeler après chaque nouveau dessin des cartes). */
 function setupBuildingFilters() {
   const searchInput = findOne("#buildingSearch");
   const typeSelect = findOne(".building-search select");
@@ -2171,14 +2454,16 @@ function setupBuildingFilters() {
   );
 
   /* Cache les cartes qui ne correspondent pas à la recherche ou au type choisi,
-        et affiche « Aucun bâtiment trouvé » s'il n'en reste aucune. */
+           et affiche « Aucun bâtiment trouvé » s'il n'en reste aucune. */
   function applyFilters() {
     const query = normalizeText(searchInput.value || topSearch.value);
     const allTypes = typeSelect.value.startsWith("Tous");
     let visibleCount = 0;
     findAll(".building-card:not(.total-card)").forEach((card) => {
       const typeMatches = allTypes || card.dataset.type === typeSelect.value;
-      const cardText = `${card.dataset.name} ${card.dataset.type}`;
+      const cardText = `${card.dataset.name} ${card.dataset.type} ${t(
+        card.dataset.name
+      )} ${t(card.dataset.type)}`;
       card.hidden = !(typeMatches && normalizeText(cardText).includes(query));
       if (!card.hidden) visibleCount++;
     });
@@ -2188,41 +2473,168 @@ function setupBuildingFilters() {
   searchInput.addEventListener("input", applyFilters);
   topSearch.addEventListener("input", applyFilters);
   const searchFromUrl = getUrlParam("q");
-  if (searchFromUrl) {
-    topSearch.value = searchFromUrl;
-    applyFilters();
-  }
+  if (searchFromUrl) topSearch.value = searchFromUrl;
   typeSelect.addEventListener("change", applyFilters);
+  return applyFilters;
 }
 
-/* Page Bâtiments : ajoute les bâtiments créés par l'utilisateur, remplit
-      chaque carte (la barre de progression compare au bâtiment qui consomme
-      le plus), la carte du total, puis active la recherche et les boutons Supprimer. */
+/* Page Bâtiments : les cartes sont dessinées depuis les données (data.json),
+         avec les boutons Modifier / Supprimer sur chaque carte, le bouton
+         « Nouveau bâtiment » et la recherche. Chaque changement est enregistré
+         dans data.json + data.csv puis les cartes sont redessinées. */
 function showBuildingsPage() {
-  addUserBuildingCards();
+  const applyFilters = setupBuildingFilters();
+  const refresh = () => {
+    renderBuildingCards();
+    applyFilters();
+  };
+  refresh();
 
-  const allElectricity = state.batiments.map((b) =>
-    electricityOfBuilding(b.nom)
-  );
-  const highestElectricity = Math.max(0, ...allElectricity) || 1;
-  findAll(".building-card:not(.total-card)").forEach((card) =>
-    fillBuildingCard(card, highestElectricity)
-  );
-  fillTotalCard();
+  /* Évite deux boîtes de dialogue en même temps (double clic) */
+  let isBusy = false;
+  async function run(action) {
+    if (isBusy) return;
+    isBusy = true;
+    try {
+      if (await action()) refresh();
+    } finally {
+      isBusy = false;
+    }
+  }
 
-  /* Un seul écouteur sur la grille pour tous les boutons « Supprimer » */
+  findOne("#newBuilding").addEventListener("click", () => run(addBuilding));
+
+  /* Un seul écouteur sur la grille pour tous les boutons Modifier / Supprimer */
   findOne("#buildingGrid").addEventListener("click", (event) => {
-    const button = event.target.closest(".del-bat");
-    if (button) deleteBuilding(button.closest(".building-card").dataset.name);
+    const button = event.target.closest("[data-act]");
+    if (!button) return;
+    const name = button.closest(".building-card").dataset.name;
+    run(() =>
+      button.dataset.act === "edit" ? editBuilding(name) : deleteBuilding(name)
+    );
   });
 
-  setupBuildingFilters();
+  setupFolderNotice();
+}
+
+/* Onglets de la page Détail : Vue d'ensemble, Historique, Statistiques, Alertes.
+         « Vue d'ensemble » montre le graphique et la fiche ; les autres onglets
+         remplacent ce contenu par un tableau ou une liste du bâtiment. */
+function setupDetailTabs(measures) {
+  const tabs = findAll(".detail-tabs .tab");
+  const overview = [findOne(".detail-columns"), findOne(".recent-alert")];
+  findOne(".detail-tabs").insertAdjacentHTML(
+    "afterend",
+    '<div id="detailView" hidden></div>'
+  );
+  const view = findOne("#detailView");
+  const newestFirst = [...measures].sort(
+    (a, b) => b.date.localeCompare(a.date) || b.id - a.id
+  );
+
+  const panel = (title, subtitle, body) =>
+    `<article class="panel table-panel"><div class="panel-heading"><div><h2>${title}</h2><p>${subtitle}</p></div></div>${body}</article>`;
+  const table = (headers, rows) =>
+    `<div class="table-wrap"><table><thead><tr>${headers
+      .map((h) => `<th>${h}</th>`)
+      .join("")}</tr></thead><tbody>${rows}</tbody></table></div>`;
+  const emptyRow = (columns, text) =>
+    `<tr><td colspan="${columns}">${text}</td></tr>`;
+
+  const views = {
+    historique() {
+      const rows = newestFirst.length
+        ? newestFirst
+            .map((m) => {
+              const resource = RESOURCES[m.ressource];
+              return `<tr class="${
+                m.alerte ? "row-alert" : ""
+              }"><td>${formatDate(
+                m.date
+              )}</td><td><span class="resource-label ${resource.cssClass}">${
+                resource.icon
+              } ${m.ressource}</span></td><td>${formatNumber(
+                m.valeur
+              )}</td><td>${m.unite}</td><td>${
+                Number.isFinite(m.seuil) ? formatNumber(m.seuil) : "—"
+              }</td><td><span class="status ${
+                m.alerte ? "warning" : "normal"
+              }">${m.alerte ? "Alerte" : "Normal"}</span></td></tr>`;
+            })
+            .join("")
+        : emptyRow(6, "Aucune mesure pour ce bâtiment.");
+      return panel(
+        "Historique",
+        `${measures.length} ${plural(
+          measures.length,
+          "mesure"
+        )} enregistrée(s), de la plus récente à la plus ancienne`,
+        table(
+          ["Date/Heure", "Ressource", "Valeur", "Unité", "Seuil", "Statut"],
+          rows
+        )
+      );
+    },
+    statistiques() {
+      const rows = RESOURCE_NAMES.map((resourceName) =>
+        measures.filter((m) => m.ressource === resourceName)
+      )
+        .filter((group) => group.length)
+        .map((group) => {
+          const stats = computeStatistics(group);
+          const unit = RESOURCES[stats.ressource].unit;
+          return `<tr><td>${stats.ressource}</td><td>${
+            stats.nb_mesures
+          }</td><td>${formatNumber(stats.total)} ${unit}</td><td>${formatNumber(
+            stats.moyenne
+          )} ${unit}</td><td>${formatNumber(
+            stats.min
+          )} ${unit}</td><td>${formatNumber(stats.max)} ${unit}</td><td>${
+            stats.nb_alertes
+          }</td></tr>`;
+        })
+        .join("");
+      return panel(
+        "Statistiques",
+        "Calculées par ressource sur toutes les mesures du bâtiment",
+        table(
+          ["Ressource", "Mesures", "Total", "Moyenne", "Min", "Max", "Alertes"],
+          rows || emptyRow(7, "Aucune mesure pour ce bâtiment.")
+        )
+      );
+    },
+    alertes() {
+      const alerts = getAlertsNewestFirst(measures);
+      const body = alerts.length
+        ? `<div class="detail-alerts">${alerts
+            .map(alertItemHtml)
+            .join("")}</div>`
+        : '<p class="muted" style="padding:0 18px 18px">Aucune alerte pour ce bâtiment.</p>';
+      return panel(
+        "Alertes",
+        `${alerts.length} ${plural(
+          alerts.length,
+          "alerte"
+        )} (valeur au-dessus du seuil)`,
+        body
+      );
+    },
+  };
+
+  function show(tab) {
+    const key = normalizeText(srcText(tab).trim());
+    const isOverview = key.startsWith("vue");
+    overview.forEach((element) => element && (element.hidden = !isOverview));
+    view.hidden = isOverview;
+    if (!isOverview) view.innerHTML = views[key]?.() || "";
+  }
+  tabs.forEach((tab) => tab.addEventListener("click", () => show(tab)));
 }
 
 /* ---------- Page : Détail d'un bâtiment (detail.html?b=Nom) ---------- */
 
 /* Page Détail : affiche les informations et les mesures d'UN bâtiment.
-      Son nom est dans l'adresse : detail.html?b=Bibliothèque. */
+         Son nom est dans l'adresse : detail.html?b=Bibliothèque. */
 function showDetailPage() {
   const name = getUrlParam("b") || "Bibliothèque";
   const building = state.batiments.find((candidate) => candidate.nom === name);
@@ -2264,6 +2676,8 @@ function showDetailPage() {
     )}</small>`;
   }
   findOne(".recent-alert p").innerHTML = lastAlertHtml;
+
+  setupDetailTabs(measures);
 }
 
 /* ---------- Page : Données (donnees.html) ---------- */
@@ -2271,8 +2685,8 @@ function showDetailPage() {
 const ROWS_PER_PAGE = 10;
 
 /* Code HTML d'une ligne du tableau des mesures : numéro, bâtiment, ressource,
-      valeur, unité, date, état (Normal / Alerte) et les boutons Modifier / Supprimer.
-      padStart(3, "0") écrit l'identifiant sur 3 chiffres : 7 devient 007. */
+         valeur, unité, date, état (Normal / Alerte) et les boutons Modifier / Supprimer.
+         padStart(3, "0") écrit l'identifiant sur 3 chiffres : 7 devient 007. */
 function measureRowHtml(measure) {
   const resource = RESOURCES[measure.ressource];
   const id = String(measure.id).padStart(3, "0");
@@ -2296,8 +2710,8 @@ function measureRowHtml(measure) {
 }
 
 /* Boutons de pagination : ‹ précédent, un bouton par page, › suivant.
-      Le bouton de la page actuelle est mis en évidence, et « ‹ » est
-      désactivé sur la première page (« › » sur la dernière). */
+         Le bouton de la page actuelle est mis en évidence, et « ‹ » est
+         désactivé sur la première page (« › » sur la dernière). */
 function paginationHtml(currentPage, pageCount) {
   let html = `<button data-p="${currentPage - 1}" ${
     currentPage === 1 ? "disabled" : ""
@@ -2314,9 +2728,9 @@ function paginationHtml(currentPage, pageCount) {
 }
 
 /* --- Export en PDF (bouton « Exporter en PDF ») ---
-      On utilise deux bibliothèques, chargées seulement au premier clic :
-      jsPDF dessine le document, jspdf-autotable y ajoute les tableaux.
-      Le PDF contient les mesures AFFICHÉES : celles qui passent les filtres. */
+         On utilise deux bibliothèques, chargées seulement au premier clic :
+         jsPDF dessine le document, jspdf-autotable y ajoute les tableaux.
+         Le PDF contient les mesures AFFICHÉES : celles qui passent les filtres. */
 
 const JSPDF_URL =
   "https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js";
@@ -2344,7 +2758,7 @@ const PDF_MARGIN = 14;
 const PDF_RIGHT = 210 - PDF_MARGIN;
 
 /* Charge les bibliothèques qui fabriquent le PDF (jsPDF et son extension
-      autoTable pour les tableaux). Elles ne sont chargées qu'au premier export. */
+         autoTable pour les tableaux). Elles ne sont chargées qu'au premier export. */
 function loadPdfLibraries() {
   if (window.jspdf?.jsPDF?.API?.autoTable) return Promise.resolve(true);
   /* autotable doit être chargé APRÈS jsPDF, car il s'y ajoute */
@@ -2358,7 +2772,7 @@ function loadPdfLibraries() {
 }
 
 /* Les polices de base du PDF ne connaissent pas l'espace fine que le français
-      met dans « 12 040 » : on la remplace par une espace normale */
+         met dans « 12 040 » : on la remplace par une espace normale */
 function pdfText(text) {
   return String(text).replace(/[  ]/g, " ");
 }
@@ -2386,38 +2800,40 @@ function drawPdfHeader(doc, userName, filterText) {
   doc.text(pdfText(settings.campus || "EcoCampus"), PDF_MARGIN, 15);
   doc.setFont("helvetica", "normal");
   doc.setFontSize(10);
-  doc.text("Rapport des mesures de consommation", PDF_MARGIN, 23);
+  doc.text(pdfT("Rapport des mesures de consommation"), PDF_MARGIN, 23);
 
-  const generatedOn = "Généré le " + formatDate(currentDateTime());
+  const generatedOn = pdfT("Généré le ") + formatDate(currentDateTime());
   doc.setFontSize(9);
   doc.text(pdfText(generatedOn), PDF_RIGHT, 15, { align: "right" });
   if (userName)
-    doc.text(pdfText("par " + userName), PDF_RIGHT, 21, { align: "right" });
+    doc.text(pdfText(pdfT("par ") + userName), PDF_RIGHT, 21, {
+      align: "right",
+    });
   if (settings.lieu)
     doc.text(pdfText(settings.lieu), PDF_RIGHT, 27, { align: "right" });
 
   doc.setTextColor(...PDF_COLORS.muted);
   doc.setFontSize(8.5);
-  doc.text(pdfText("Filtres : " + filterText), PDF_MARGIN, 40);
+  doc.text(pdfText(pdfT("Filtres :") + " " + filterText), PDF_MARGIN, 40);
 }
 
 /* Cartes de résumé : mesures, alertes, puis le total de chaque ressource présente.
-      Renvoie la position (en mm) sous les cartes. */
+         Renvoie la position (en mm) sous les cartes. */
 function drawPdfSummary(doc, measures) {
   const alertCount = measures.filter((m) => m.alerte).length;
   const cards = [
     {
-      label: "Mesures",
+      label: pdfT("Mesures"),
       value: formatNumber(measures.length),
       color: PDF_COLORS.brand,
     },
     {
-      label: "Alertes",
+      label: pdfT("Alertes"),
       value: formatNumber(alertCount),
       color: alertCount ? PDF_COLORS.alert : PDF_COLORS.ok,
     },
     ...resourcesIn(measures).map((resource) => ({
-      label: `${resource} (${RESOURCES[resource].unit})`,
+      label: `${pdfT(resource)} (${RESOURCES[resource].unit})`,
       value: formatNumber(sumValues(filterByResource(measures, resource))),
       color: PDF_COLORS[resource],
     })),
@@ -2487,7 +2903,7 @@ function drawBuildingSummaryTable(doc, measures, startY) {
   const rows = buildingNames.map((name) => {
     const buildingMeasures = measures.filter((m) => m.batiment === name);
     return [
-      name,
+      pdfT(name),
       ...resources.map((resource) =>
         formatNumber(sumValues(filterByResource(buildingMeasures, resource)))
       ),
@@ -2497,10 +2913,12 @@ function drawBuildingSummaryTable(doc, measures, startY) {
   });
 
   const head = [
-    "Bâtiment",
-    ...resources.map((resource) => `${resource} (${RESOURCES[resource].unit})`),
-    "Mesures",
-    "Alertes",
+    pdfT("Bâtiment"),
+    ...resources.map(
+      (resource) => `${pdfT(resource)} (${RESOURCES[resource].unit})`
+    ),
+    pdfT("Mesures"),
+    pdfT("Alertes"),
   ];
   const alertColumn = head.length - 1;
   const columnStyles = { 0: { fontStyle: "bold" } };
@@ -2531,13 +2949,13 @@ function drawMeasureTable(doc, measures, startY) {
   const rows = measures.map((m) =>
     [
       String(m.id).padStart(3, "0"),
-      m.batiment,
-      m.ressource,
+      pdfT(m.batiment),
+      pdfT(m.ressource),
       formatNumber(m.valeur),
       m.unite,
       formatDate(m.date),
       Number.isFinite(m.seuil) ? formatNumber(m.seuil) : "-",
-      m.alerte ? "Alerte" : "Normal",
+      m.alerte ? pdfT("Alerte") : pdfT("Normal"),
     ].map(pdfText)
   );
 
@@ -2552,20 +2970,20 @@ function drawMeasureTable(doc, measures, startY) {
     ...pdfTableStyle(startY),
     head: [
       [
-        "N°",
-        "Bâtiment",
-        "Ressource",
-        "Valeur",
-        "Unité",
-        "Date / heure",
-        "Seuil",
-        "Statut",
+        pdfT("N°"),
+        pdfT("Bâtiment"),
+        pdfT("Ressource"),
+        pdfT("Valeur"),
+        pdfT("Unité"),
+        pdfT("Date / heure"),
+        pdfT("Seuil"),
+        pdfT("Statut"),
       ],
     ],
     body: rows,
     columnStyles,
     /* Appelée par autoTable pour chaque case du tableau PDF, juste avant de la
-          dessiner : on colore les lignes en alerte, la ressource et le statut. */
+             dessiner : on colore les lignes en alerte, la ressource et le statut. */
     didParseCell(cell) {
       if (cell.section === "head") return alignHeader(cell, columnStyles);
       const measure = measures[cell.row.index];
@@ -2582,7 +3000,7 @@ function drawMeasureTable(doc, measures, startY) {
 }
 
 /* Bas de chaque page : nom du rapport et « Page 2 / 3 ».
-      On le dessine à la fin, quand on connaît le nombre total de pages. */
+         On le dessine à la fin, quand on connaît le nombre total de pages. */
 function drawPdfFooters(doc) {
   const pageCount = doc.getNumberOfPages();
   for (let page = 1; page <= pageCount; page++) {
@@ -2593,7 +3011,9 @@ function drawPdfFooters(doc) {
     doc.setFontSize(8);
     doc.setTextColor(...PDF_COLORS.muted);
     doc.text(
-      pdfText(`${settings.campus || "EcoCampus"} · Rapport des mesures`),
+      pdfText(
+        `${settings.campus || "EcoCampus"} · ${pdfT("Rapport des mesures")}`
+      ),
       PDF_MARGIN,
       289
     );
@@ -2621,13 +3041,13 @@ async function exportPdf(measures, filterText) {
   drawPdfHeader(doc, user ? displayName(user) : "", filterText);
   let y = drawPdfSummary(doc, measures);
 
-  y = drawPdfSectionTitle(doc, "Synthèse par bâtiment", y);
+  y = drawPdfSectionTitle(doc, pdfT("Synthèse par bâtiment"), y);
   drawBuildingSummaryTable(doc, measures, y);
 
   /* doc.lastAutoTable.finalY = position du bas du tableau précédent */
   y = drawPdfSectionTitle(
     doc,
-    `Détail des mesures (${measures.length})`,
+    `${pdfT("Détail des mesures")} (${measures.length})`,
     doc.lastAutoTable.finalY + 12
   );
   drawMeasureTable(doc, measures, y);
@@ -2640,9 +3060,9 @@ async function exportPdf(measures, filterText) {
 }
 
 /* Export CSV de secours (si le PDF est impossible) : un fichier INDÉPENDANT
-      « apercu_data.csv », avec un résumé puis un bloc par bâtiment.
-      Séparateur « ; » + BOM : s'ouvre en colonnes dans Excel. Le data.csv du
-      dossier data, lui, est déjà mis à jour automatiquement à chaque changement. */
+         « apercu_data.csv », avec un résumé puis un bloc par bâtiment.
+         Séparateur « ; » + BOM : s'ouvre en colonnes dans Excel. Le data.csv du
+         dossier data, lui, est déjà mis à jour automatiquement à chaque changement. */
 function exportPreview(siteMeasures = state.mesures) {
   if (!siteMeasures.length) {
     showToast("Aucune mesure à exporter.", "alert");
@@ -2702,7 +3122,7 @@ function exportPreview(siteMeasures = state.mesures) {
 }
 
 /* Une heure (en millisecondes, comme Date.now()) au format « 2026-10-09T14:00 »,
-      à l'heure locale */
+         à l'heure locale */
 function timestampToIso(timestamp) {
   const date = new Date(timestamp);
   return new Date(date - date.getTimezoneOffset() * 60000)
@@ -2754,7 +3174,7 @@ async function askNewMeasure() {
 }
 
 /* Petit message après l'ajout d'une mesure : en rouge si c'est une anomalie,
-      sinon un message de confirmation (selon les réglages de notifications). */
+         sinon un message de confirmation (selon les réglages de notifications). */
 function notifyMeasureAdded(measure) {
   if (measure.alerte && settings.notif_alerte) {
     showToast(
@@ -2811,7 +3231,7 @@ async function askEditMeasure(measure) {
 }
 
 /* Badge « Dernière mesure : ... » : la date la plus récente.
-      Les dates « AAAA-MM-JJ... » se trient comme du texte ; pop() prend la dernière. */
+         Les dates « AAAA-MM-JJ... » se trient comme du texte ; pop() prend la dernière. */
 function showLastMeasureBadge() {
   const lastDate = state.mesures
     .map((measure) => measure.date)
@@ -2823,7 +3243,7 @@ function showLastMeasureBadge() {
 }
 
 /* Explique où vont les changements, avec les boutons Connecter et Réinitialiser.
-      Dossier connecté : le message déjà présent dans le HTML suffit. */
+         Dossier connecté : le message déjà présent dans le HTML suffit. */
 function setupFolderNotice() {
   if (isFolderConnected) return;
 
@@ -2861,15 +3281,17 @@ function setupFolderNotice() {
       ok: "Réinitialiser",
     });
     if (confirmed) {
-      localStorage.removeItem(MEASURES_KEY);
+      [MEASURES_KEY, ADDED_BUILDINGS_KEY, DELETED_BUILDINGS_KEY].forEach(
+        (key) => localStorage.removeItem(key)
+      );
       location.reload();
     }
   });
 }
 
 /* Page Données : le tableau de toutes les mesures, avec filtres (bâtiment,
-      ressource, texte, période), pagination, ajout, modification, suppression,
-      export, et mise à jour en temps réel. */
+         ressource, texte, période), pagination, ajout, modification, suppression,
+         export, et mise à jour en temps réel. */
 function showDataPage() {
   /* Filtres actuels du tableau, et numéro de la page affichée */
   const filters = { building: "", resource: "", text: "", page: 1 };
@@ -2880,7 +3302,7 @@ function showDataPage() {
   const period = setupPeriodPicker(true, () => applyFilters());
 
   /* Vrai pendant un ajout / une modification / une suppression :
-        le temps réel attend la fin pour ne pas écraser le changement */
+           le temps réel attend la fin pour ne pas écraser le changement */
   let isEditing = false;
 
   /* Liste des bâtiments du filtre (garde le choix actuel s'il existe encore) */
@@ -2899,9 +3321,11 @@ function showDataPage() {
   fillBuildingFilter();
 
   /* true si la mesure correspond à TOUS les filtres choisis.
-        Un filtre vide ("") laisse tout passer. */
+           Un filtre vide ("") laisse tout passer. */
   function matchesFilters(measure) {
-    const searchableText = `${measure.id} ${measure.batiment} ${measure.ressource} ${measure.valeur}`;
+    const searchableText = `${measure.id} ${measure.batiment} ${
+      measure.ressource
+    } ${measure.valeur} ${t(measure.batiment)} ${t(measure.ressource)}`;
     return (
       (!filters.building || measure.batiment === filters.building) &&
       (!filters.resource || measure.ressource === filters.resource) &&
@@ -2918,7 +3342,7 @@ function showDataPage() {
   }
 
   /* Redessine le tableau : filtre les mesures, calcule le nombre de pages,
-        puis affiche seulement les 10 lignes de la page actuelle (slice). */
+           puis affiche seulement les 10 lignes de la page actuelle (slice). */
   function renderTable() {
     const measures = getFilteredMeasures();
     const pageCount = Math.max(1, Math.ceil(measures.length / ROWS_PER_PAGE));
@@ -2974,7 +3398,7 @@ function showDataPage() {
   });
 
   /* Boutons de chaque ligne : on met à jour l'écran PUIS data.json + data.csv ;
-        si l'écriture échoue, on annule le changement. */
+           si l'écriture échoue, on annule le changement. */
   findOne("#measureTable tbody").addEventListener("click", async (event) => {
     const button = event.target.closest("[data-act]");
     if (!button) return;
@@ -3010,12 +3434,12 @@ function showDataPage() {
   /* Filtres actuels écrits en clair, pour l'en-tête du PDF */
   function describeFilters() {
     const parts = [
-      filters.building || "Tous les bâtiments",
-      filters.resource || "Toutes les ressources",
-      findOne("#pLabel").textContent,
+      pdfT(filters.building || "Tous les bâtiments"),
+      pdfT(filters.resource || "Toutes les ressources"),
+      pdfT(srcText(findOne("#pLabel"))),
     ];
     const text = (textSearch.value || topSearch.value).trim();
-    if (text) parts.push(`Recherche « ${text} »`);
+    if (text) parts.push(pdfT(`Recherche « ${text} »`));
     return parts.join(" · ");
   }
 
@@ -3060,7 +3484,7 @@ function showDataPage() {
   });
 
   /* Temps réel : quand les mesures changent ailleurs, on réaffiche le tableau
-        (même filtres, même page) et on fait clignoter les nouvelles lignes */
+           (même filtres, même page) et on fait clignoter les nouvelles lignes */
   startLiveUpdates(
     (newIds) => {
       fillBuildingFilter();
@@ -3107,7 +3531,7 @@ function showSettingsPage() {
   }
 
   /* Surligne les réglages qui correspondent à la recherche et ouvre leur onglet.
-        Renvoie le nombre de résultats. */
+           Renvoie le nombre de résultats. */
   function searchSettings() {
     findAll(".hit").forEach((element) => element.classList.remove("hit"));
     const query = normalizeText(searchInput.value.trim());
@@ -3144,8 +3568,8 @@ function showSettingsPage() {
 }
 
 /* ---------- Page : Mon profil (profil.html) ----------
-      Tout est calculé à partir du compte connecté, de son journal d'activité
-      et des mesures : la page change dès que ces données changent. */
+         Tout est calculé à partir du compte connecté, de son journal d'activité
+         et des mesures : la page change dès que ces données changent. */
 
 const ACTIVITY_ICONS = {
   ajout: "＋",
@@ -3165,11 +3589,82 @@ function timeAgo(timestamp) {
   return formatDate(timestampToIso(timestamp));
 }
 
+/* Carte « Photo de profil » : aperçu, et boutons selon qu'il y a une photo ou non */
+function fillPhotoCard(name, photo) {
+  setAvatar(findOne("#photoPreview"), name, photo);
+  findOne("#photoChoose").textContent = photo
+    ? "Modifier la photo"
+    : "Importer une photo";
+  findOne("#photoRemove").hidden = !photo;
+}
+
+/* Choix, modification et suppression de la photo (page Mon profil) */
+function setupPhotoCard(getUser, setUser) {
+  const input = findOne("#photoInput");
+  const errorElement = findOne("#photoError");
+
+  /* Enregistre dans le compte ; renvoie false si le navigateur n'a plus de place */
+  async function savePhoto(photo) {
+    const user = getUser();
+    try {
+      setUser(await updateUser(user.u, { photo }));
+    } catch {
+      errorElement.textContent =
+        "Impossible d'enregistrer la photo (espace de stockage du navigateur plein).";
+      errorElement.hidden = false;
+      return false;
+    }
+    const updated = getUser();
+    fillProfileHeader(updated);
+    showUserInTopbar(displayName(updated), updated.photo);
+    return true;
+  }
+
+  findOne("#photoChoose").addEventListener("click", () => input.click());
+
+  input.addEventListener("change", async () => {
+    const file = input.files[0];
+    input.value = ""; // permet de choisir deux fois le même fichier
+    if (!file) return;
+    errorElement.hidden = true;
+
+    const result = await preparePhoto(file);
+    if (result.error) {
+      errorElement.textContent = result.error;
+      errorElement.hidden = false;
+      return;
+    }
+    const hadPhoto = !!getUser().photo;
+    if (!(await savePhoto(result.photo))) return;
+    logActivity(
+      "compte",
+      hadPhoto ? "Photo de profil modifiée" : "Photo de profil ajoutée"
+    );
+    fillActivity(getUser().u);
+    showToast("Photo de profil enregistrée.");
+  });
+
+  findOne("#photoRemove").addEventListener("click", async () => {
+    errorElement.hidden = true;
+    const confirmed = await openDialog({
+      title: "Supprimer la photo de profil ?",
+      text: "Votre avatar par défaut sera affiché à la place.",
+      ok: "Supprimer",
+    });
+    if (!confirmed) return;
+    if (!(await savePhoto(""))) return;
+    logActivity("compte", "Photo de profil supprimée");
+    fillActivity(getUser().u);
+    showToast("Photo de profil supprimée.");
+  });
+}
+
 /* En-tête : avatar, nom, rôle, dates. user = le compte, éventuellement avec
-      des modifications pas encore enregistrées (aperçu pendant la saisie). */
+         des modifications pas encore enregistrées (aperçu pendant la saisie). */
 function fillProfileHeader(user) {
   const name = displayName(user);
-  findOne("#profileAvatar").textContent = name.charAt(0).toUpperCase();
+  setAvatar(findOne("#profileAvatar"), name, user.photo);
+  fillPhotoCard(name, user.photo);
   findOne("#profileName").textContent = name;
   findOne("#profileHandle").textContent =
     "@" + user.u + (user.email ? " · " + user.email : "");
@@ -3227,8 +3722,8 @@ function fillFavoriteBuilding(buildingName) {
   panel.innerHTML = `<div class="panel-heading"><h2>Mon bâtiment suivi : ${escapeHtml(
     buildingName
   )}</h2>${status}</div>
-       <div class="favorite-list">${rows}</div>
-       <a class="text-link" href="${link}">Voir le détail →</a>`;
+          <div class="favorite-list">${rows}</div>
+          <a class="text-link" href="${link}">Voir le détail →</a>`;
 }
 
 /* Compteurs et liste des dernières actions */
@@ -3279,7 +3774,7 @@ function readProfileForm(form) {
 }
 
 /* Page Mon profil : remplit le formulaire avec les informations du compte,
-      affiche l'activité de l'utilisateur et enregistre les modifications. */
+         affiche l'activité de l'utilisateur et enregistre les modifications. */
 async function showProfilePage() {
   let user = await getCurrentUser();
   if (!user) return;
@@ -3307,6 +3802,10 @@ async function showProfilePage() {
   fillFavoriteBuilding(user.favori);
   fillActivity(user.u);
   updateBioCount();
+  setupPhotoCard(
+    () => user,
+    (updatedUser) => (user = updatedUser)
+  );
 
   /* Pendant la saisie : aperçu immédiat de l'en-tête et du bâtiment suivi */
   form.addEventListener("input", () => {
@@ -3327,7 +3826,7 @@ async function showProfilePage() {
       return;
     }
     user = await updateUser(user.u, values);
-    showUserInTopbar(displayName(user));
+    showUserInTopbar(displayName(user), user.photo);
     logActivity("compte", "Profil mis à jour");
     fillActivity(user.u);
     saveButton.disabled = true;
@@ -3356,11 +3855,12 @@ const PAGE_FUNCTIONS = {
   data: showDataPage,
   settings: showSettingsPage,
   profile: showProfilePage,
+  map: () => window.initCampusMap && window.initCampusMap(),
 };
 
 /* =====================================================================
-      PARTIE 13 — Barre de recherche du haut
-      ===================================================================== */
+         PARTIE 13 — Barre de recherche du haut
+         ===================================================================== */
 
 /* Pages proposées dans les suggestions : [nom, mots-clés, adresse] */
 const SITE_PAGES = [
@@ -3396,7 +3896,7 @@ const SEARCH_PLACEHOLDERS = {
 };
 
 /* Adresse de la page Données avec une recherche, ex : donnees.html?q=eau.
-      encodeURIComponent protège les espaces et les accents dans l'adresse. */
+         encodeURIComponent protège les espaces et les accents dans l'adresse. */
 function measuresSearchUrl(text) {
   return PAGES_URL + "donnees.html?q=" + encodeURIComponent(text);
 }
@@ -3423,7 +3923,7 @@ function buildingSuggestionHtml(building) {
 }
 
 /* Suggestion de recherche pour une page du site.
-      [name, , url] prend la 1re et la 3e case du tableau (la 2e est ignorée). */
+         [name, , url] prend la 1re et la 3e case du tableau (la 2e est ignorée). */
 function pageSuggestionHtml([name, , url]) {
   return `<a href="${url}"><span>→</span>${escapeHtml(name)}</a>`;
 }
@@ -3432,10 +3932,12 @@ function pageSuggestionHtml([name, , url]) {
 function suggestionsHtml(text) {
   const query = normalizeText(text);
   const buildings = state.batiments
-    .filter((building) => normalizeText(building.nom).includes(query))
+    .filter((building) =>
+      normalizeText(building.nom + " " + t(building.nom)).includes(query)
+    )
     .slice(0, 5);
   const pages = SITE_PAGES.filter(([name, keywords]) =>
-    normalizeText(name + " " + keywords).includes(query)
+    normalizeText(name + " " + t(name) + " " + keywords).includes(query)
   );
 
   let html = "";
@@ -3460,7 +3962,7 @@ function setupSearchSuggestions(searchInput) {
   searchInput.closest(".search").append(resultsBox);
 
   /* Affiche la liste des suggestions sous la barre de recherche,
-        ou la cache si le champ est vide. */
+           ou la cache si le champ est vide. */
   function showSuggestions() {
     const text = searchInput.value.trim();
     if (!normalizeText(text)) {
@@ -3485,7 +3987,7 @@ function setupSearchSuggestions(searchInput) {
 }
 
 /* Barre de recherche du haut : son texte d'aide change selon la page,
-      et son comportement aussi (filtre direct, Entrée, ou suggestions). */
+         et son comportement aussi (filtre direct, Entrée, ou suggestions). */
 function setupTopSearch() {
   const searchInput = findOne(".topbar .search input");
   if (!searchInput) return;
@@ -3495,26 +3997,26 @@ function setupTopSearch() {
     "Rechercher un bâtiment, une page, une mesure…";
 
   /* Sur ces pages, la barre filtre directement le contenu (voir PARTIE 12) */
-  if (["data", "buildings", "settings"].includes(CURRENT_PAGE)) return;
+  if (["data", "buildings", "settings", "map"].includes(CURRENT_PAGE)) return;
 
   if (CURRENT_PAGE === "charts") setupChartsSearch(searchInput);
   else setupSearchSuggestions(searchInput);
 }
 
 /* =====================================================================
-      PARTIE 14 — Éléments communs à toutes les pages
-      ===================================================================== */
+         PARTIE 14 — Éléments communs à toutes les pages
+         ===================================================================== */
 
 /* Écrit le nom et l'initiale de l'utilisateur en haut à droite */
-function showUserInTopbar(name) {
+function showUserInTopbar(name, photo = "") {
   const profile = findOne(".profile");
   if (profile) profile.textContent = name;
   const avatar = findOne(".avatar");
-  if (avatar) avatar.textContent = name.charAt(0).toUpperCase();
+  if (avatar) setAvatar(avatar, name, photo);
 }
 
 /* Bouton de déconnexion, nom et initiale de l'utilisateur.
-      Un clic sur l'avatar ou le nom ouvre la page Mon profil. */
+         Un clic sur l'avatar ou le nom ouvre la page Mon profil. */
 function setupUserMenu() {
   const session = getSession();
   const actions = findOne(".top-actions");
@@ -3537,15 +4039,15 @@ function setupUserMenu() {
   );
   findOne(".logout-btn").addEventListener("click", logout);
 
-  showUserInTopbar(session.u);
+  showUserInTopbar(session.u, storedPhoto(session.u));
   /* Le nom complet (s'il existe) est dans le compte, qu'on lit ensuite */
   getCurrentUser().then((user) => {
-    if (user) showUserInTopbar(displayName(user));
+    if (user) showUserInTopbar(displayName(user), user.photo);
   });
 }
 
 /* Bouton thème clair / sombre : ajoute ou enlève la classe « dark-mode »,
-      retient le choix, puis redessine les graphiques avec les nouvelles couleurs. */
+         retient le choix, puis redessine les graphiques avec les nouvelles couleurs. */
 function setupThemeButton() {
   findOne("#themeToggle")?.addEventListener("click", () => {
     document.body.classList.toggle("dark-mode");
@@ -3573,91 +4075,9 @@ function setupNotificationsButton() {
   });
 }
 
-/* Vérifie le nom d'un nouveau bâtiment. Renvoie un message d'erreur, ou "". */
-function checkBuildingName(name) {
-  if (!name) return "Le nom est obligatoire.";
-  const lowerName = name.toLowerCase();
-  if (state.batiments.some((b) => b.nom.toLowerCase() === lowerName)) {
-    return "Ce bâtiment existe déjà.";
-  }
-  if (/[,"\n\r]/.test(name) || name.length > 49) {
-    return "Nom invalide : pas de virgule ni de guillemet, 49 caractères max.";
-  }
-  return "";
-}
-
-/* Sans dossier connecté, le nouveau bâtiment est gardé dans le navigateur */
-function rememberAddedBuilding(building) {
-  const lowerName = building.nom.toLowerCase();
-  const deletedNames = readStoredList(DELETED_BUILDINGS_KEY).filter(
-    (name) => name.toLowerCase() !== lowerName
-  );
-  localStorage.setItem(DELETED_BUILDINGS_KEY, JSON.stringify(deletedNames));
-
-  const addedBuildings = readStoredList(ADDED_BUILDINGS_KEY);
-  addedBuildings.push(building);
-  localStorage.setItem(ADDED_BUILDINGS_KEY, JSON.stringify(addedBuildings));
-}
-
-/* Bouton « Nouveau bâtiment » : ouvre un formulaire (nom, type...),
-      vérifie le nom, ajoute le bâtiment puis enregistre. */
-function setupNewBuildingButton() {
-  findOne("#newBuilding")?.addEventListener("click", async () => {
-    const answers = await openDialog({
-      title: "Nouveau bâtiment",
-      ok: "Créer",
-      fields: [
-        { name: "nom", label: "Nom du bâtiment" },
-        {
-          name: "type",
-          label: "Type",
-          options: ["Enseignement", "Résidence", "Administration"],
-        },
-        {
-          name: "etages",
-          label: "Nombre d'étages",
-          type: "number",
-          min: 1,
-          value: 1,
-        },
-        {
-          name: "surface",
-          label: "Surface (m²)",
-          type: "number",
-          min: 1,
-          value: 500,
-        },
-      ],
-    });
-    if (!answers) return;
-
-    const name = answers.nom.trim();
-    const errorMessage = checkBuildingName(name);
-    if (errorMessage) {
-      showToast(errorMessage, "alert");
-      return;
-    }
-
-    const building = {
-      nom: name,
-      type: answers.type,
-      etages: Number(answers.etages),
-      surface: Number(answers.surface),
-    };
-    state.batiments.push(building);
-    if (!(await saveData())) {
-      state.batiments.pop(); // échec : on annule
-      return;
-    }
-    if (!isFolderConnected) rememberAddedBuilding(building);
-    logActivity("ajout", `Création du bâtiment « ${building.nom} »`);
-    location.reload();
-  });
-}
-
 /* Changement de mot de passe : demande l'ancien (pour vérifier que c'est bien
-      le propriétaire du compte), puis le nouveau deux fois (contre les fautes de
-      frappe, 8 caractères minimum), puis l'enregistre. Renvoie true si le mot de passe a été changé. */
+         le propriétaire du compte), puis le nouveau deux fois (contre les fautes de
+         frappe, 8 caractères minimum), puis l'enregistre. Renvoie true si le mot de passe a été changé. */
 async function askChangePassword() {
   const answers = await openDialog({
     title: "Changer le mot de passe",
@@ -3693,7 +4113,7 @@ async function askChangePassword() {
 }
 
 /* Bouton « Réinitialiser » : après confirmation, efface les préférences
-      gardées dans le navigateur (les comptes ne sont jamais effacés). */
+         gardées dans le navigateur (les comptes ne sont jamais effacés). */
 async function askResetEverything() {
   const confirmed = await openDialog({
     title: "Tout réinitialiser ?",
@@ -3759,29 +4179,28 @@ function setupTabs() {
 }
 
 /* Prépare tout ce qui est commun à toutes les pages : réglages, menu de
-      l'utilisateur, bouton thème, recherche, notifications, nouveau bâtiment... */
+         l'utilisateur, bouton thème, recherche, notifications, nouveau bâtiment... */
 function setupCommonElements() {
   applySettings();
   setupUserMenu();
   setupThemeButton();
   setupTopSearch();
   setupNotificationsButton();
-  setupNewBuildingButton();
   setupSettingsForm();
   setupTabs();
 }
 
 /* =====================================================================
-      PARTIE 15 — Démarrage : tout commence ici
-      ===================================================================== */
+         PARTIE 15 — Démarrage : tout commence ici
+         ===================================================================== */
 
 /* Point de départ du site, appelé quand la page HTML est prête (voir la dernière ligne).
-   
-        1. pas connecté : on ne fait rien (la page de connexion s'ouvre) ;
-        2. page de connexion : on la prépare et on s'arrête là ;
-        3. sinon : éléments communs, puis on charge data.json ;
-        4. on charge Chart.js si la page a des graphiques ;
-        5. on appelle la fonction de la page (PAGE_FUNCTIONS : une fonction par page). */
+      
+           1. pas connecté : on ne fait rien (la page de connexion s'ouvre) ;
+           2. page de connexion : on la prépare et on s'arrête là ;
+           3. sinon : éléments communs, puis on charge data.json ;
+           4. on charge Chart.js si la page a des graphiques ;
+           5. on appelle la fonction de la page (PAGE_FUNCTIONS : une fonction par page). */
 async function startApp() {
   /* Sans session, la redirection vers la connexion est déjà en cours */
   if (CURRENT_PAGE !== "login" && !getSession()) return;
@@ -3803,7 +4222,7 @@ async function startApp() {
   prepareState(data);
 
   /* Les pages Données, Bâtiments et Profil n'ont pas de graphique */
-  if (!["data", "buildings", "profile"].includes(CURRENT_PAGE)) {
+  if (!["data", "buildings", "profile", "map"].includes(CURRENT_PAGE)) {
     await loadChartJs();
   }
   showPage();
